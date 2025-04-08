@@ -1,0 +1,40 @@
+# === Node.js ===
+node_modules/
+.env
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# === Vite / React ===
+client/dist/
+client/node_modules/
+client/.env
+client/.DS_Store
+
+# === VS Code ===
+.vscode/
+*.code-workspace
+
+# === OS Specific ===
+.DS_Store
+Thumbs.db
+
+# === TypeScript ===
+*.tsbuildinfo
+
+# === Logs ===
+logs/
+*.log
+debug.log
+
+# === Coverage ===
+coverage/
+
+# === Others ===
+server/.env
+server/node_modules/
+server/dist/
