@@ -1,10 +1,14 @@
-import Login from './components/Login'
+// import {Login} from './components/auth/Login'
+// import { Signup } from './components/auth/Signup'
+import HomeLayout from './components/home/HomeLayout'
+// import Profile from './components/home/Profile'
 
 function App() {
 
   return (
     <div>
-      <Login />
+      <HomeLayout />
+      {/* <Profile /> */}
     </div>
   )
 }
