@@ -1,5 +1,5 @@
 import { Route, Routes } from "react-router-dom";
-import { Login } from "../components/auth/login";
+import { Login } from "../components/auth/Login";
 import { Signup } from "../components/auth/Signup";
 import Page404 from "../components/Error/Page404";
 import PrivateRoute from "./PrivateRoute";

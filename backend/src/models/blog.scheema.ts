@@ -1,0 +1,61 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IBlog extends Document {
+  title: string;
+  content: string;
+  author: mongoose.Types.ObjectId;
+  tags?: string[];
+  preference: string[]; // <-- changed from string to string[]
+  image?: string;
+  isPublished: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const BlogSchema: Schema = new Schema<IBlog>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    content: {
+      type: String,
+      required: true,
+    },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    tags: [{
+      type: String,
+    }],
+    preference: [{
+      type: String,
+      enum: [
+        'travel',
+        'food',
+        'lifestyle',
+        'fitness',
+        'technology',
+        'gaming',
+        'fashion',
+        'education',
+        'music',
+        'daily routine',
+      ],
+    }],
+    image: {
+      type: String,
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);

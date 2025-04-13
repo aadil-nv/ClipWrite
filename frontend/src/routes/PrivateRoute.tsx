@@ -7,10 +7,11 @@ export interface PrivateRouteProps {
 const PrivateRoute = ({ children }: PrivateRouteProps) => {
   const { user } = useAuth();
   const isUser = user.isAuthenticated
+  console.log("isUser===>",isUser);
 
 
   if (isUser) {
-    return <Navigate to="/user/dashboard" />;  
+    return <Navigate to="/user/blogs" />;  
   }else{
     return <>{children}</>;
   }

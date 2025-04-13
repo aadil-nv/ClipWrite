@@ -7,7 +7,6 @@ export const Dashboard404 = () => {
   return (
     <div className={`min-h-screen bg-white flex items-center justify-center px-4`}>
       <div className="text-center">
-        <h1>dfsdfkasdhklfhsdklfhksdhfjksdhjfkshdjkfhkjsahklsdahfkjsdh</h1>
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -59,7 +58,7 @@ export const Dashboard404 = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
         >
-          <Link to="/user/dashboard">
+          <Link to="/">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

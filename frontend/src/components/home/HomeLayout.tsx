@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Navbar from './Navbar';
-import Blogs from './Bloggs';
+import { Outlet } from 'react-router-dom';
 
 interface UserProfile {
   initials: string;
@@ -9,7 +9,7 @@ interface UserProfile {
 
 export default function HomeLayout(): React.ReactElement {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userProfile] = useState<UserProfile>({ 
+  const [userProfile] = useState<UserProfile>({
     initials: 'CW',
     id: 'user1'
   });
@@ -23,16 +23,23 @@ export default function HomeLayout(): React.ReactElement {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar 
-        isLoggedIn={isLoggedIn}
-        userProfile={userProfile}
-        onLoginClick={handleLogin}
-        onLogoutClick={handleLogout}
-      />
-      <main>
-        <Blogs />
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Fixed navbar with z-index to ensure it stays on top */}
+      <div className="fixed top-0 left-0 right-0 z-10">
+        <Navbar
+          isLoggedIn={isLoggedIn}
+          userProfile={userProfile}
+          onLoginClick={handleLogin}
+          onLogoutClick={handleLogout}
+        />
+      </div>
+      
+      {/* Main content with padding-top to prevent content from hiding under navbar */}
+      <main className="flex-grow pt-16 mt-2">
+        {/* Outlet component to render nested routes */}
+        <Outlet />
       </main>
+      
       <footer className="bg-gray-800 text-white py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
