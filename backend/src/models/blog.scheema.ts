@@ -5,9 +5,11 @@ export interface IBlog extends Document {
   content: string;
   author: mongoose.Types.ObjectId;
   tags?: string[];
-  preference: string[]; // <-- changed from string to string[]
+  preference: string[];
   image?: string;
   isPublished: boolean;
+  likeCount: number;
+  dislikeCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,14 @@ const BlogSchema: Schema = new Schema<IBlog>(
     isPublished: {
       type: Boolean,
       default: false,
+    },
+    likeCount: {
+      type: Number,
+      default: 0,
+    },
+    dislikeCount: {
+      type: Number,
+      default: 0,
     },
   },
   {

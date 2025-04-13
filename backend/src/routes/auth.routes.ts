@@ -10,4 +10,4 @@ authRouter.post("/login-email", loginValidation, validateRequest, loginWithEmail
 authRouter.post("/login-mobile", loginWithMobileValidation, validateRequest, loginWithMobile);
 authRouter.post("/logout", validateRequest, logoutUser);
 authRouter.post('/refresh-token', validateRequest, setNewAccessToken);
-    
+        

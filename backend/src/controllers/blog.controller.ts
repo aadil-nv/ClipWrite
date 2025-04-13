@@ -42,7 +42,7 @@ export const createBlog = async (req: AuthRequest, res: Response, next: NextFunc
 
 export const getAllBlogs = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blogs = await Blog.find({}).populate("author" ,"name email");
+    const blogs = await Blog.find({}).populate("author");
     res.status(HttpStatusCode.OK).json({
       message: BLOG_MESSAGES.ALL_BLOGS_FETCHED,
       blogs,
@@ -54,13 +54,8 @@ export const getAllBlogs = async (req: Request, res: Response, next: NextFunctio
 
 export const getBlogById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const id = req.user?.id;
-    console.log("PPPPPPPPPPPPPPPPPPPPPP",id);
-    
-    const blog = await Blog.findById(id).populate("author" ,"name email");
-
-    console.log("blog",blog);
-    
+    const id = req.params.id;    
+    const blog = await Blog.findById(id).populate("author" );    
 
     if (!blog) {
       return res.status(HttpStatusCode.NOT_FOUND).json({ message: BLOG_MESSAGES.BLOG_NOT_FOUND });
@@ -109,3 +104,6 @@ export const deleteBlog = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+
+export const 

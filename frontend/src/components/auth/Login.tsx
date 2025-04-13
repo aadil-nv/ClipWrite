@@ -45,7 +45,7 @@ export function Login(): React.ReactElement {
     setError(null);
   
     try {
-      const { data } = await userInstance.post('api/auth/login-email', values);
+      const { data } = await userInstance.post('api/auth/login-email', values ,{ withCredentials: true });
       message.success('Login successful!');
       dispatch(login({ userName: data.name  }));
       navigate('/user/blogs');

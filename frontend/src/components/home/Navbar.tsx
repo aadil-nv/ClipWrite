@@ -4,6 +4,7 @@ import useAuth from '../../hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout as userLogout } from '../../redux/slices/userSlice';
+import { userInstance } from '../../middleware/axios';
 
 // Define proper TypeScript interfaces
 interface UserProfile {
@@ -92,6 +93,7 @@ export default function Navbar({
 
   const handleLogout = (): void => {
     onLogoutClick();
+    userInstance.post("api/auth/logout");
     dispatch(userLogout());
     navigate("/");
     setShowLogoutModal(false);

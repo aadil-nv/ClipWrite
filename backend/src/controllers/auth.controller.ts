@@ -30,8 +30,8 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
 
     
   
-      res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "none", maxAge: 15 * 60 * 1000 });
-      res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "none", maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 15 * 60 * 1000 });
+      res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 7 * 24 * 60 * 60 * 1000 });
   
       res.status(HttpStatusCode.CREATED).json({ message: MESSAGES.USER_REGISTERED , user});
     } catch (error) {
@@ -65,8 +65,8 @@ export const loginWithEmail = async (req: Request, res: Response, next: NextFunc
     console.log("access token--------",accessToken)
     console.log(" refresh token--------",refreshToken)
 
-    res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "none", maxAge: 15 * 60 * 1000 });
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "none", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 15 * 60 * 1000 });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
     res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER_LOGGED_IN ,name:user.name });
   } catch (error) {
@@ -99,14 +99,14 @@ export const loginWithMobile = async (req: Request, res: Response, next: NextFun
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -140,7 +140,7 @@ export const setNewAccessToken =async (req: Request, res: Response, next: NextFu
       return res.status(HttpStatusCode.FORBIDDEN).json({ message: "Unauthorized" });
     }
     const accessToken = generateAccessToken({ id: decoded.id, email: decoded.email });
-    res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "none", maxAge: 15 * 60 * 1000 });    
+    res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 15 * 60 * 1000 });    
     res.status(HttpStatusCode.OK).json({ message: "Access token updated successfully." });
   } catch (error) {
     next(error);
