@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import ProfileDetailsTab from './ProfileDetailsTab';
 import PasswordChangeTab from './PasswordChangeTab';
-import MyVlogsTab from './MyVlogsTab';
+import MyBlogsTab from './MyBlogsTab';
 import PreferencesTab from './PreferencesTab';
 
 // Define the available tab types
-type TabType = 'details' | 'password' | 'vlogs' | 'preferences';
+type TabType = 'details' | 'password' | 'blogs' | 'preferences';
 
 // The main dashboard component
 const ProfileDashboard: React.FC = () => {
@@ -43,9 +43,9 @@ const ProfileDashboard: React.FC = () => {
             label="Change Password"
           />
           <TabButton 
-            active={activeTab === 'vlogs'} 
-            onClick={() => setActiveTab('vlogs')}
-            label="My Vlogs"
+            active={activeTab === 'blogs'} 
+            onClick={() => setActiveTab('blogs')}
+            label="My Blogs"
           />
           <TabButton 
             active={activeTab === 'preferences'} 
@@ -65,7 +65,7 @@ const ProfileDashboard: React.FC = () => {
       >
         {activeTab === 'details' && <ProfileDetailsTab />}
         {activeTab === 'password' && <PasswordChangeTab />}
-        {activeTab === 'vlogs' && <MyVlogsTab />}
+        {activeTab === 'blogs' && <MyBlogsTab />}
         {activeTab === 'preferences' && <PreferencesTab />}
       </motion.div>
     </div>

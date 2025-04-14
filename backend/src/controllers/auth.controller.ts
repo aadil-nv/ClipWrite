@@ -68,7 +68,7 @@ export const loginWithEmail = async (req: Request, res: Response, next: NextFunc
     res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 15 * 60 * 1000 });
     res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
-    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER_LOGGED_IN ,name:user.name });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER_LOGGED_IN , user});
   } catch (error) {
     next(error);
   }
@@ -110,7 +110,7 @@ export const loginWithMobile = async (req: Request, res: Response, next: NextFun
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER_LOGGED_IN, name: user.name });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER_LOGGED_IN, user });
   } catch (error) {
     next(error);
   }

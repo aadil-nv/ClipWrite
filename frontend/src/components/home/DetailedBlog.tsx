@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { userInstance } from '../../middleware/axios';
+import useAuth from '../../hooks/useAuth';
 
 // Define proper TypeScript interfaces
 interface Author {
@@ -26,6 +27,8 @@ interface Blog {
   isPublished: boolean;
   likeCount: number;
   dislikeCount: number;
+  likedBy: string[];
+  dislikedBy: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -35,24 +38,41 @@ interface ApiResponse {
   blog: Blog;
 }
 
+interface AuthUser {
+  userId: string;
+}
+
 export default function BlogDetail() {
-    console.log("hitting here");
-    
   const { id } = useParams<{ id: string }>();
   const [blog, setBlog] = useState<Blog | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLiked, setIsLiked] = useState<boolean>(false);
+  const [isDisliked, setIsDisliked] = useState<boolean>(false);
+  const [showBlockConfirmation, setShowBlockConfirmation] = useState<boolean>(false);
   const navigate = useNavigate();
+  const { user } = useAuth() as { user: AuthUser };
+  const userId = user.userId;
 
   useEffect(() => {
     const fetchBlogDetail = async () => {
-
-        console.log("calling fetchBlogDetail=====>11111111111");
-        
       try {
         setIsLoading(true);
+        if (!id) {
+          throw new Error("Blog ID is missing");
+        }
         const response = await userInstance.get<ApiResponse>(`api/blog/blogs/${id}`);
-        setBlog(response.data.blog);
+        const fetchedBlog = response.data.blog;
+        setBlog(fetchedBlog);
+        
+        // Check if user has already liked or disliked based on userId
+        if (fetchedBlog.likedBy && fetchedBlog.likedBy.includes(userId)) {
+          setIsLiked(true);
+        }
+        if (fetchedBlog.dislikedBy && fetchedBlog.dislikedBy.includes(userId)) {
+          setIsDisliked(true);
+        }
+        
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching blog details:', error);
@@ -63,20 +83,102 @@ export default function BlogDetail() {
 
     if (id) {
       fetchBlogDetail();
+    } else {
+      setError('Blog ID is missing');
+      setIsLoading(false);
     }
-  }, [id]);
+  }, [id, userId]);
 
   // Function to like a blog
   const handleLikeBlog = async () => {
     if (!blog) return;
     
     try {
-      await userInstance.post(`api/blog/like/${blog._id}`);
-      // Refresh blog to get updated like count
-      const response = await userInstance.get<ApiResponse>(`api/blog/${id}`);
-      setBlog(response.data.blog);
+      // Update UI immediately for better UX before API call
+      if (isDisliked) {
+        setIsDisliked(false);
+        setBlog(prev => prev ? {...prev, dislikeCount: Math.max(0, prev.dislikeCount - 1)} : null);
+      }
+      
+      // Toggle like state
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      
+      // Update like count immediately
+      setBlog(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          likeCount: newLikedState 
+            ? prev.likeCount + 1 
+            : Math.max(0, prev.likeCount - 1)
+        };
+      });
+      
+      // Make API call
+      await userInstance.patch(`api/blog/like/${blog._id}`);
+      
     } catch (error) {
       console.error('Error liking blog:', error);
+      // Revert UI changes on error
+      setIsLiked(!isLiked);
+      setBlog(prev => prev ? {...prev} : null);
+    }
+  };
+
+  // Function to dislike a blog
+  const handleDislikeBlog = async () => {
+    if (!blog) return;
+    
+    try {
+      // Update UI immediately for better UX
+      if (isLiked) {
+        setIsLiked(false);
+        setBlog(prev => prev ? {...prev, likeCount: Math.max(0, prev.likeCount - 1)} : null);
+      }
+      
+      // Toggle dislike state
+      const newDislikedState = !isDisliked;
+      setIsDisliked(newDislikedState);
+      
+      // Update dislike count internally but don't show it
+      setBlog(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          dislikeCount: newDislikedState 
+            ? prev.dislikeCount + 1 
+            : Math.max(0, prev.dislikeCount - 1)
+        };
+      });
+      
+      // Make API call
+      await userInstance.patch(`api/blog/dislike/${blog._id}`);
+      
+    } catch (error) {
+      console.error('Error disliking blog:', error);
+      // Revert UI changes on error
+      setIsDisliked(!isDisliked);
+      setBlog(prev => prev ? {...prev} : null);
+    }
+  };
+
+  // Function to confirm block action
+  const confirmBlockBlog = () => {
+    setShowBlockConfirmation(true);
+  };
+
+  // Function to block a blog after confirmation
+  const handleBlockBlog = async () => {
+    if (!blog) return;
+    
+    try {
+      await userInstance.patch(`api/blog/block/${blog._id}`);
+      // Navigate away after blocking
+      navigate('/blogs');
+    } catch (error) {
+      console.error('Error blocking blog:', error);
+      setShowBlockConfirmation(false);
     }
   };
 
@@ -100,128 +202,341 @@ export default function BlogDetail() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
+        <motion.div 
+          className="rounded-full h-12 w-12 border-b-2 border-teal-500"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        />
       </div>
     );
   }
 
   if (error || !blog) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-        <p className="text-gray-700 mb-6">{error || 'Blog not found'}</p>
-        <button 
+      <div className="max-w-4xl mx-auto px-4 py-8 md:py-16 text-center">
+        <motion.h2 
+          className="text-xl md:text-2xl font-bold text-red-600 mb-4"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          Error
+        </motion.h2>
+        <motion.p 
+          className="text-gray-700 mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          {error || 'Blog not found'}
+        </motion.p>
+        <motion.button 
           onClick={() => navigate('/blogs')}
-          className="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+          className="px-6 py-3 bg-teal-600 text-white rounded-md hover:bg-teal-700 shadow-lg transition-all duration-300 transform"
+          whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
+          whileTap={{ scale: 0.95 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
         >
           Back to Blogs
-        </button>
+        </motion.button>
       </div>
     );
   }
 
   return (
     <motion.div 
-      className="max-w-4xl mx-auto px-4 py-12"
+      className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-8"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       {/* Back Button */}
-      <button 
+      <motion.button 
         onClick={() => navigate('/blogs')}
-        className="mb-8 flex items-center text-teal-600 hover:text-teal-800"
+        className="mb-4 md:mb-6 flex items-center text-teal-600 hover:text-teal-800 bg-teal-50 px-4 py-2 rounded-full shadow-sm transition-all duration-300"
+        whileHover={{ 
+          x: -5, 
+          backgroundColor: "#e6fffa", 
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
+        }}
+        whileTap={{ scale: 0.95 }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
         </svg>
         Back to Blogs
-      </button>
+      </motion.button>
 
       {/* Blog Header */}
-      <div className="mb-8">
-        <div className="flex flex-wrap gap-2 mb-4">
+      <div className="mb-4 md:mb-6">
+        <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
           {blog.preference.map((pref, index) => (
-            <span key={index} className="bg-teal-100 text-teal-800 text-xs font-medium px-2 py-1 rounded-md">
+            <motion.span 
+              key={index} 
+              className="bg-teal-100 text-teal-800 text-xs font-medium px-2 py-1 rounded-md"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+              whileHover={{ backgroundColor: "#b2f5ea", y: -2 }}
+            >
               {pref}
-            </span>
+            </motion.span>
           ))}
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold mb-4">{blog.title}</h1>
+        <motion.h1 
+          className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          {blog.title}
+        </motion.h1>
         
         {/* Author and Meta Info */}
-        <div className="flex flex-wrap items-center justify-between mb-6 text-gray-600">
-          <div className="flex items-center mr-4 mb-2 sm:mb-0">
-            <div className="h-10 w-10 bg-gray-300 rounded-full mr-3"></div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 text-gray-600">
+          <motion.div 
+            className="flex items-center mb-3 sm:mb-0"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <div className="h-10 w-10 bg-gray-300 rounded-full mr-3 flex-shrink-0"></div>
             <div>
               <p className="font-medium">{blog.author.name}</p>
               <p className="text-sm">{formatDate(blog.createdAt)}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
+          </motion.div>
+          <motion.div 
+            className="flex items-center gap-4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
             <span className="text-sm">{calculateReadTime(blog.content)} min read</span>
-            <button 
-              onClick={handleLikeBlog}
-              className="flex items-center gap-1 text-gray-500 hover:text-teal-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={blog.likeCount > 0 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-              <span>{blog.likeCount}</span>
-            </button>
-          </div>
+            <div className="flex items-center gap-2">
+              <motion.button 
+                onClick={handleLikeBlog}
+                className={`flex items-center gap-1 ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                animate={isLiked ? { y: [0, -5, 0] } : {}}
+                transition={isLiked ? { duration: 0.3 } : {}}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                <span>{blog.likeCount}</span>
+              </motion.button>
+              <motion.button 
+                onClick={handleDislikeBlog}
+                className={`flex items-center gap-1 ${isDisliked ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'}`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                animate={isDisliked ? { y: [0, 5, 0] } : {}}
+                transition={isDisliked ? { duration: 0.3 } : {}}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isDisliked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                </svg>
+                {/* Removed dislike count */}
+              </motion.button>
+            </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Featured Image */}
-      <div className="mb-8">
+      <motion.div 
+        className="mb-6 md:mb-8 overflow-hidden rounded-lg shadow-md"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        whileHover={{ scale: 1.01, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+      >
         <img 
           src={blog.image} 
           alt={blog.title}
-          className="w-full h-auto rounded-lg shadow-md"
+          className="w-full h-48 sm:h-64 md:h-80 object-cover object-center"
         />
-      </div>
+      </motion.div>
 
       {/* Blog Content */}
-      <div className="prose max-w-none">
+      <motion.div 
+        className="prose max-w-none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
         {/* Render content with proper formatting */}
         {blog.content.split('\n').map((paragraph, index) => (
-          paragraph.trim() ? <p key={index} className="mb-4">{paragraph}</p> : null
+          paragraph.trim() ? 
+            <motion.p 
+              key={index} 
+              className="mb-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.4 + (index * 0.1) }}
+            >
+              {paragraph}
+            </motion.p> : null
         ))}
-      </div>
+      </motion.div>
 
       {/* Tags */}
       {blog.tags.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <motion.div 
+          className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-200"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
           <h3 className="text-lg font-medium mb-2">Tags</h3>
           <div className="flex flex-wrap gap-2">
             {blog.tags.map((tag, index) => (
-              <span key={index} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+              <motion.span 
+                key={index} 
+                className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.5 + (index * 0.1) }}
+                whileHover={{ scale: 1.05, backgroundColor: "#f3f4f6", y: -2, boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+              >
                 {tag}
-              </span>
+              </motion.span>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Action Buttons */}
-      <div className="mt-10 flex justify-between items-center">
-        <button 
+      <motion.div 
+        className="mt-6 md:mt-8 flex flex-col sm:flex-row sm:justify-between gap-3"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+      >
+        <motion.button 
           onClick={() => navigate('/blogs')}
-          className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          className="w-full sm:w-auto px-5 py-2 bg-teal-50 text-teal-700 rounded-md border border-teal-200 shadow-sm transition-all duration-300"
+          whileHover={{ 
+            scale: 1.03, 
+            backgroundColor: "#e6fffa", 
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
+          }}
+          whileTap={{ scale: 0.97 }}
         >
           Back to Blogs
-        </button>
-        <button 
-          onClick={handleLikeBlog}
-          className="flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-          Like This Post
-        </button>
-      </div>
+        </motion.button>
+
+        <div className="flex flex-col xs:flex-row gap-3 w-full sm:w-auto">
+          <motion.button 
+            onClick={confirmBlockBlog}
+            className="w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2 bg-gray-800 text-white rounded-md shadow-sm transition-all duration-300"
+            whileHover={{ 
+              scale: 1.03, 
+              backgroundColor: "#1a202c", 
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
+            }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            Block
+          </motion.button>
+          
+          <motion.button 
+            onClick={handleLikeBlog}
+            className={`w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-md shadow-sm transition-all duration-300 ${
+              isLiked 
+                ? 'bg-red-500 text-white hover:bg-red-600' 
+                : 'bg-teal-600 text-white hover:bg-teal-700'
+            }`}
+            whileHover={{ 
+              scale: 1.03, 
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
+            }}
+            whileTap={{ scale: 0.97 }}
+            animate={isLiked ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.3 }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {isLiked ? 'Liked' : 'Like'} ({blog.likeCount})
+          </motion.button>
+
+          <motion.button 
+            onClick={handleDislikeBlog}
+            className={`w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-md shadow-sm transition-all duration-300 ${
+              isDisliked 
+                ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                : 'bg-gray-400 text-white hover:bg-gray-500'
+            }`}
+            whileHover={{ 
+              scale: 1.03, 
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
+            }}
+            whileTap={{ scale: 0.97 }}
+            animate={isDisliked ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.3 }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isDisliked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+            </svg>
+            {isDisliked ? 'Disliked' : 'Dislike'}
+            {/* Removed dislike count */}
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Block Confirmation Modal */}
+      <AnimatePresence>
+        {showBlockConfirmation && (
+          <motion.div 
+            className="fixed inset-0 backdrop-filter backdrop-blur-sm bg-black bg-opacity-30 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div 
+              className="bg-white rounded-lg p-5 md:p-6 max-w-md w-full mx-auto shadow-xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 400 }}
+            >
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Confirm Block</h3>
+              <p className="mb-5 md:mb-6">Are you sure you want to block this blog? This action cannot be undone.</p>
+              <div className="flex flex-col xs:flex-row justify-end gap-3">
+                <motion.button 
+                  onClick={() => setShowBlockConfirmation(false)}
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 w-full xs:w-auto transition-all duration-300"
+                  whileHover={{ scale: 1.05, backgroundColor: "#e5e7eb" }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button 
+                  onClick={handleBlockBlog}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 w-full xs:w-auto shadow-sm transition-all duration-300"
+                  whileHover={{ 
+                    scale: 1.05, 
+                    backgroundColor: "#dc2626", 
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Block Blog
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

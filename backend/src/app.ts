@@ -10,6 +10,8 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { authRouter } from "./routes/auth.routes";
 import { connectDB } from "./config/connectDB";
 import { blogRouter } from "./routes/blog.routes";
+import { profileRouter } from "./routes/profile.routes";
+import { myBlogRouter } from "./routes/myBlog.routes";
 
 connectDB();
 
@@ -22,6 +24,8 @@ app.use(logger);
 
 app.use("/api/auth", authRouter);
 app.use("/api/blog", blogRouter);
+app.use("/api/profile", profileRouter);
+app.use("/api/my-blogs", myBlogRouter);
 
 
 app.use(errorHandler);

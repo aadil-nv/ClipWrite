@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
+import { userInstance } from '../../middleware/axios';
+import { AxiosError } from 'axios';
 
 interface PasswordData {
   currentPassword: string;
@@ -17,6 +19,12 @@ const PasswordChangeTab: React.FC = () => {
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState<boolean>(false);
+  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,7 +38,7 @@ const PasswordChangeTab: React.FC = () => {
     setSuccess(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -49,17 +57,44 @@ const PasswordChangeTab: React.FC = () => {
       return;
     }
     
-    // Password change logic would go here
-    console.log('Password change submitted');
-    setSuccess(true);
-    
-    // Reset form
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
+    try {
+      setIsLoading(true);
+      
+      // API call to update password
+       await userInstance.post("api/profile/password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword
+      });
+      
+      // If API call is successful
+      setSuccess(true);
+      setError(null);
+      
+      // Reset form
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      
+    } catch (err) {
+      const error = err as AxiosError<{ message: string }>;
+      if (error.response && error.response.data && error.response.data.message) {
+        setError(error.response.data.message);
+      } else {
+        setError('An error occurred. Please try again.');
+      }
+      setSuccess(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Toggle password visibility functions
+  const toggleCurrentPasswordVisibility = () => setShowCurrentPassword(!showCurrentPassword);
+  const toggleNewPasswordVisibility = () => setShowNewPassword(!showNewPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
   return (
     <div className="p-6">
@@ -79,14 +114,25 @@ const PasswordChangeTab: React.FC = () => {
             transition={{ delay: 0.1 }}
           >
             <label className="block text-indigo-700 mb-2 font-medium">Current Password</label>
-            <input 
-              type="password" 
-              name="currentPassword"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-              placeholder="Enter your current password"
-              value={passwordData.currentPassword}
-              onChange={handleInputChange}
-            />
+            <div className="relative">
+              <input 
+                type={showCurrentPassword ? "text" : "password"}
+                name="currentPassword"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                placeholder="Enter your current password"
+                value={passwordData.currentPassword}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <button 
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                onClick={toggleCurrentPasswordVisibility}
+                aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+              >
+                {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </motion.div>
           
           <motion.div 
@@ -95,14 +141,25 @@ const PasswordChangeTab: React.FC = () => {
             transition={{ delay: 0.2 }}
           >
             <label className="block text-indigo-700 mb-2 font-medium">New Password</label>
-            <input 
-              type="password" 
-              name="newPassword"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-              placeholder="Enter new password"
-              value={passwordData.newPassword}
-              onChange={handleInputChange}
-            />
+            <div className="relative">
+              <input 
+                type={showNewPassword ? "text" : "password"}
+                name="newPassword"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                placeholder="Enter new password"
+                value={passwordData.newPassword}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <button 
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                onClick={toggleNewPasswordVisibility}
+                aria-label={showNewPassword ? "Hide password" : "Show password"}
+              >
+                {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </motion.div>
           
           <motion.div 
@@ -111,14 +168,25 @@ const PasswordChangeTab: React.FC = () => {
             transition={{ delay: 0.3 }}
           >
             <label className="block text-indigo-700 mb-2 font-medium">Confirm New Password</label>
-            <input 
-              type="password" 
-              name="confirmPassword"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-              placeholder="Confirm new password"
-              value={passwordData.confirmPassword}
-              onChange={handleInputChange}
-            />
+            <div className="relative">
+              <input 
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                placeholder="Confirm new password"
+                value={passwordData.confirmPassword}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <button 
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                onClick={toggleConfirmPasswordVisibility}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </motion.div>
           
           {error && (
@@ -144,11 +212,18 @@ const PasswordChangeTab: React.FC = () => {
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+            className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             type="submit"
+            disabled={isLoading}
           >
-            <Lock size={18} className="mr-2" />
-            Update Password
+            {isLoading ? (
+              <span className="animate-pulse">Processing...</span>
+            ) : (
+              <>
+                <Lock size={18} className="mr-2" />
+                Update Password
+              </>
+            )}
           </motion.button>
         </div>
       </form>

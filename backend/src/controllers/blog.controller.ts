@@ -4,6 +4,7 @@ import { BLOG_MESSAGES } from "../constants/blog.constants";
 import { HttpStatusCode } from "../utils/enums";
 import { Blog } from "../models/blog.scheema";
 import { AuthRequest } from "../utils/interface";
+import mongoose from "mongoose";
 
 export const createBlog = async (req: AuthRequest, res: Response, next: NextFunction) => {
   console.log("hitting here0", req.body);
@@ -106,4 +107,163 @@ export const deleteBlog = async (req: Request, res: Response, next: NextFunction
 };
 
 
-export const 
+export const addLike = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log("calling add like controller", req.body);
+
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({ message: "Invalid user ID" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(HttpStatusCode.NOT_FOUND).json({
+        message: BLOG_MESSAGES.BLOG_NOT_FOUND,
+      });
+    }
+
+    // Check if user is blocked
+    if (blog.blockedUsers.some(uid => uid && uid.equals(userObjectId))) {
+      return res.status(HttpStatusCode.FORBIDDEN).json({
+        message: "You are blocked from interacting with this blog.",
+      });
+    }
+
+    const hasLiked = blog.likedBy.some(uid => uid && uid.equals(userObjectId));
+    const hasDisliked = blog.dislikedBy.some(uid => uid && uid.equals(userObjectId));
+
+    if (hasLiked) {
+      blog.likeCount -= 1;
+      blog.likedBy = blog.likedBy.filter(uid => uid && !uid.equals(userObjectId));
+      await blog.save();
+
+      return res.status(HttpStatusCode.OK).json({
+        message: BLOG_MESSAGES.LIKE_REMOVED || "Like removed",
+        likeCount: blog.likeCount,
+      });
+    }
+
+    // If user has disliked, remove the dislike first
+    if (hasDisliked) {
+      blog.dislikeCount -= 1;
+      blog.dislikedBy = blog.dislikedBy.filter(uid => uid && !uid.equals(userObjectId));
+    }
+
+    // Then add the like
+    blog.likeCount += 1;
+    blog.likedBy.push(userObjectId);
+    await blog.save();
+
+    return res.status(HttpStatusCode.OK).json({
+      message: BLOG_MESSAGES.LIKE_ADDED || "Like added",
+      likeCount: blog.likeCount,
+      dislikeCount: blog.dislikeCount,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const blockBlog = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log("calling block blog controller", req.body);
+  
+  try {
+    const  blogId  = req.params.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({ message: "Invalid user ID" });
+    }
+
+    if (!blogId) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({ message: "Blog ID is required" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const blog = await Blog.findById(blogId);
+    if (!blog) {
+      return res.status(HttpStatusCode.NOT_FOUND).json({ message: BLOG_MESSAGES.BLOG_NOT_FOUND });
+    }
+
+    const isBlocked = blog.blockedUsers.some(id => id.equals(userObjectId));
+
+    if (isBlocked) {
+      blog.blockedUsers = blog.blockedUsers.filter(id => !id.equals(userObjectId));
+      await blog.save();
+      return res.status(HttpStatusCode.OK).json({ message: "Blog unblocked successfully" });
+    }
+
+    blog.blockedUsers.push(userObjectId);
+    await blog.save();
+
+    return res.status(HttpStatusCode.OK).json({ message: "Blog blocked successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const addDislike = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({ message: "Invalid user ID" });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(HttpStatusCode.NOT_FOUND).json({
+        message: BLOG_MESSAGES.BLOG_NOT_FOUND,
+      });
+    }
+
+    const hasDisliked = blog.dislikedBy.some(uid => uid?.equals(userObjectId));
+    const hasLiked = blog.likedBy.some(uid => uid?.equals(userObjectId));
+
+    // Toggle off dislike if already disliked
+    if (hasDisliked) {
+      blog.dislikeCount -= 1;
+      blog.dislikedBy = blog.dislikedBy.filter(uid => uid && !uid.equals(userObjectId));
+      await blog.save();
+      return res.status(HttpStatusCode.OK).json({
+        message: BLOG_MESSAGES.DISLIKE_REMOVED || "Dislike removed",
+        dislikeCount: blog.dislikeCount,
+      });
+    }
+
+    // If already liked, remove like first
+    if (hasLiked) {
+      blog.likeCount -= 1;
+      blog.likedBy = blog.likedBy.filter(uid => uid && !uid.equals(userObjectId));
+    }
+
+    // Then add dislike
+    blog.dislikeCount += 1;
+    blog.dislikedBy.push(userObjectId);
+    await blog.save();
+
+    return res.status(HttpStatusCode.OK).json({
+      message: BLOG_MESSAGES.DISLIKE_ADDED || "Dislike added",
+      dislikeCount: blog.dislikeCount,
+      likeCount: blog.likeCount,
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+

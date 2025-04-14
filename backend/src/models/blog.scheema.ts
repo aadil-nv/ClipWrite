@@ -10,58 +10,33 @@ export interface IBlog extends Document {
   isPublished: boolean;
   likeCount: number;
   dislikeCount: number;
+  likedBy: mongoose.Types.ObjectId[];
+  dislikedBy: mongoose.Types.ObjectId[];
+  blockedUsers: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 const BlogSchema: Schema = new Schema<IBlog>(
   {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    content: {
-      type: String,
-      required: true,
-    },
-    author: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    tags: [{
-      type: String,
-    }],
+    title: { type: String, required: true, trim: true },
+    content: { type: String, required: true },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    tags: [{ type: String }],
     preference: [{
       type: String,
       enum: [
-        'travel',
-        'food',
-        'lifestyle',
-        'fitness',
-        'technology',
-        'gaming',
-        'fashion',
-        'education',
-        'music',
-        'daily routine',
+        'travel', 'food', 'lifestyle', 'fitness', 'technology',
+        'gaming', 'fashion', 'education', 'music', 'daily routine',
       ],
     }],
-    image: {
-      type: String,
-    },
-    isPublished: {
-      type: Boolean,
-      default: false,
-    },
-    likeCount: {
-      type: Number,
-      default: 0,
-    },
-    dislikeCount: {
-      type: Number,
-      default: 0,
-    },
+    image: { type: String },
+    isPublished: { type: Boolean, default: false },
+    likeCount: { type: Number, default: 0 },
+    dislikeCount: { type: Number, default: 0 },
+    likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    dislikedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
   },
   {
     timestamps: true,

@@ -95,7 +95,7 @@ export function Signup(): React.ReactElement {
       message.success('Account created successfully!');
       
       // Dispatch login action to Redux store and navigate to blogs page
-      dispatch(login({ userName: response.data.user.name }));
+      dispatch(login({ userData: response.data.user, userId: response.data.id }));
       navigate('/user/blogs');
       
     } catch (error) {

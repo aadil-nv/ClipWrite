@@ -1,32 +1,62 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+interface UserData {
+  name: string | null;
+  email: string | null;
+  mobile: string | null;
+  dob: string | null;
+  preferences: string[] | null;
+  image: string | null; // added image field
+}
+
 interface UserState {
   isAuthenticated: boolean;
-  userName: string | null;
+  userId: string | null;
+  userData: UserData;
 }
 
 const initialState: UserState = {
   isAuthenticated: false,
-  userName: null,
+  userId: null,
+  userData: {
+    name: null,
+    email: null,
+    mobile: null,
+    dob: null,
+    preferences: null,
+    image: null, // added initial value
+  },
 };
 
 const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    login: (state, action: PayloadAction<{ userName: string }>) => {
+    login: (state, action: PayloadAction<{ userId: string; userData: UserData }>) => {
       state.isAuthenticated = true;
-      state.userName = action.payload.userName;
+      state.userId = action.payload.userId;
+      state.userData = action.payload.userData;
     },
     logout: (state) => {
       state.isAuthenticated = false;
-      state.userName = null;
+      state.userId = null;
+      state.userData = {
+        name: null,
+        email: null,
+        mobile: null,
+        dob: null,
+        preferences: null,
+        image: null,
+      };
     },
-    setUserData: (state, action: PayloadAction<{ userName: string }>) => {
-      state.userName = action.payload.userName;
+    updateUserData: (state, action: PayloadAction<{ userData: Partial<UserData> }>) => {
+      state.userData = {
+        ...state.userData,
+        ...action.payload.userData,
+      };
     },
   },
 });
 
-export const { login, logout, setUserData } = userSlice.actions;
+export const { login, logout, updateUserData } = userSlice.actions;
 export default userSlice.reducer;

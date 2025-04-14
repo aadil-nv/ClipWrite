@@ -46,8 +46,11 @@ export function Login(): React.ReactElement {
   
     try {
       const { data } = await userInstance.post('api/auth/login-email', values ,{ withCredentials: true });
+
+      console.log("Login response:", data);
+      
       message.success('Login successful!');
-      dispatch(login({ userName: data.name  }));
+      dispatch(login({ userData:data.user , userId: data.id}));
       navigate('/user/blogs');
     } catch (err) {
       const error = err as AxiosError<ErrorResponse>;
@@ -68,7 +71,7 @@ export function Login(): React.ReactElement {
     try {
        const { data } = await userInstance.post('api/auth/login-mobile', values);
       message.success('Login successful!');
-      dispatch(login({ userName: data.name  }));
+      dispatch(login({ userData: data.user , userId: data.id}));
       navigate('/user/blogs');
     } catch (err) {
       const error = err as AxiosError<ErrorResponse>;

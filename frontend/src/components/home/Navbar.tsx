@@ -182,7 +182,7 @@ export default function Navbar({
                       onClick={toggleProfileMenu}
                     >
                       <div className="bg-slate-700 p-1 px-3 rounded-full border-2 border-emerald-400 cursor-pointer flex items-center">
-                        <span className="text-sm font-medium text-white mr-1">{user.userName || userProfile.initials}</span>
+                        <span className="text-sm font-medium text-white mr-1">{user.userData.name || userProfile.initials}</span>
                         <svg className="h-4 w-4 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                         </svg>
@@ -245,7 +245,7 @@ export default function Navbar({
                     onClick={toggleProfileMenu}
                   >
                     <div className="bg-slate-700 p-1 rounded-full border-2 border-emerald-400">
-                      <span className="text-sm font-medium text-white">{user.userName?.[0]?.toUpperCase() || userProfile.initials}</span>
+                      <span className="text-sm font-medium text-white">{user.userData.name?.[0]?.toUpperCase() || userProfile.initials}</span>
                     </div>
                   </motion.div>
                   

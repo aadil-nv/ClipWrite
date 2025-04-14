@@ -23,3 +23,26 @@ export const createNewBlog = async (blogData: BlogFormData): Promise<CreateBlogR
     throw new Error('Failed to create blog post');
   }
 };
+
+
+export const getBlogById = async (blogId: string) => {
+  console.log("Blog ID:", blogId);
+  
+  try {
+    const response = await userInstance.get(`/api/blog/${blogId}`);
+    return response.data.blog;
+  } catch (error) {
+    console.error('Error fetching blog by ID:', error);
+    throw error;
+  }
+};
+
+export const updateBlog = async (blogId: string, blogData: any) => {
+  try {
+    const response = await userInstance.put(`/api/blogs/${blogId}`, blogData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating blog:', error);
+    throw error;
+  }
+};

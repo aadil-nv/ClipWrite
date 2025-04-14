@@ -7,6 +7,7 @@ export interface IUser extends Document {
   mobile: string;
   dob: Date;
   preferences: string[];
+  image?: string
 }
 
 const userSchema = new Schema<IUser>(
@@ -32,6 +33,9 @@ const userSchema = new Schema<IUser>(
     dob: {
       type: Date,
       required: true,
+    },
+    image: {
+      type: String,
     },
     preferences: {
       type: [String],

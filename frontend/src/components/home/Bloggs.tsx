@@ -1,7 +1,8 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { userInstance } from '../../middleware/axios';
 import { useNavigate } from 'react-router-dom';
+// import useAuth from '../../hooks/useAuth';
 
 // Define proper TypeScript interfaces
 interface Author {
@@ -13,6 +14,7 @@ interface Author {
   preferences: string[];
   createdAt: string;
   updatedAt: string;
+  image: string;
 }
 
 interface Blog {
@@ -67,8 +69,9 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const navigate = useNavigate();
 
-  // Extract unique categories from blog preferences
-  const getCategories = (blogs: Blog[]): string[] => {
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [blogsPerPage] = useState<number>(6);
+    const getCategories = (blogs: Blog[]): string[] => {
     const allPreferences = blogs.flatMap(blog => blog.preference);
     const uniqueCategories = [...new Set(allPreferences)];
     return ['all', ...uniqueCategories];
@@ -93,8 +96,10 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
 
   // Function to like a blog
   const handleLikeBlog = async (blogId: string) => {
+    console.log("Blog ID: for likeikg ", blogId);
+    
     try {
-      await userInstance.post(`api/blog/like/${blogId}`);
+      await userInstance.patch(`api/blog/like/${blogId}`);
       // Refresh blogs to get updated like count
       const response = await userInstance.get<ApiResponse>('api/blog/all-blogs/');
       setBlogs(response.data.blogs);
@@ -112,6 +117,22 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
   const filteredBlogs = activeCategory === 'all' 
     ? blogs 
     : blogs.filter(blog => blog.preference.includes(activeCategory));
+  
+  // Reset to first page when changing category
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory]);
+
+  // Get current blogs for pagination
+  const indexOfLastBlog = currentPage * blogsPerPage;
+  const indexOfFirstBlog = indexOfLastBlog - blogsPerPage;
+  const currentBlogs = filteredBlogs.slice(indexOfFirstBlog, indexOfLastBlog);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredBlogs.length / blogsPerPage);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   // Featured blog (first blog if not provided)
   const displayedFeaturedBlog = featuredBlog || (blogs.length > 0 ? blogs[0] : null);
@@ -169,7 +190,13 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="h-8 w-8 bg-gray-300 rounded-full mr-3"></div>
+                    <div className="h-8 w-8 bg-gray-300 rounded-full mr-3">
+                      <img 
+                        src={displayedFeaturedBlog.author.image} 
+                        alt={displayedFeaturedBlog.author.name}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    </div>
                     <div>
                       <p className="text-sm font-medium">{displayedFeaturedBlog.author.name}</p>
                       <p className="text-xs text-gray-300">
@@ -233,7 +260,7 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
           initial="hidden"
           animate="visible"
         >
-          {filteredBlogs.map((blog) => (
+          {currentBlogs.map((blog) => (
             <BlogCard 
               key={blog._id} 
               blog={blog} 
@@ -258,6 +285,93 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
           </button>
         </div>
       )}
+
+      {/* Pagination */}
+      {!isLoading && filteredBlogs.length > 0 && (
+        <div className="mt-12 flex justify-center">
+          <nav className="flex items-center">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`mx-1 px-3 py-2 rounded-md ${
+                currentPage === 1 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+            
+            {/* Page Numbers */}
+            <div className="flex">
+              {[...Array(totalPages)].map((_, index) => {
+                const pageNumber = index + 1;
+                
+                // Show first page, current page, last page, and one page before and after current
+                const isFirstPage = pageNumber === 1;
+                const isLastPage = pageNumber === totalPages;
+                const isCurrentPage = pageNumber === currentPage;
+                const isAdjacentToCurrent = Math.abs(pageNumber - currentPage) === 1;
+                
+                // Only render the page numbers we want to show
+                if (isFirstPage || isLastPage || isCurrentPage || isAdjacentToCurrent) {
+                  return (
+                    <motion.button
+                      key={pageNumber}
+                      onClick={() => paginate(pageNumber)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`mx-1 w-10 h-10 flex items-center justify-center rounded-md ${
+                        isCurrentPage 
+                          ? 'bg-teal-600 text-white' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {pageNumber}
+                    </motion.button>
+                  );
+                }
+                
+                // Show ellipsis for gaps
+                if ((pageNumber === 2 && currentPage > 3) || 
+                    (pageNumber === totalPages - 1 && currentPage < totalPages - 2)) {
+                  return (
+                    <span key={`ellipsis-${pageNumber}`} className="mx-1 px-3 py-2">
+                      ...
+                    </span>
+                  );
+                }
+                
+                // Don't render this page number
+                return null;
+              })}
+            </div>
+            
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`mx-1 px-3 py-2 rounded-md ${
+                currentPage === totalPages 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </nav>
+        </div>
+      )}
+      
+      {/* Page Info Text */}
+      {!isLoading && filteredBlogs.length > 0 && (
+        <div className="mt-4 text-center text-sm text-gray-500">
+          Showing {indexOfFirstBlog + 1} to {Math.min(indexOfLastBlog, filteredBlogs.length)} of {filteredBlogs.length} blogs
+        </div>
+      )}
     </div>
   );
 }
@@ -277,7 +391,7 @@ function BlogCard({ blog, onLike, onClick, formatDate, calculateReadTime }: Blog
   return (
     <motion.div 
       className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-      variants={itemVariants} // Now this is accessible since itemVariants is defined outside
+      variants={itemVariants}
       whileHover={{ y: -5 }}
       onClick={onClick}
     >
@@ -308,7 +422,13 @@ function BlogCard({ blog, onLike, onClick, formatDate, calculateReadTime }: Blog
         </p>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="h-6 w-6 bg-gray-300 rounded-full mr-2"></div>
+            <div className="h-6 w-6 bg-gray-300 rounded-full mr-2">
+              <img 
+                src={author.image} 
+                alt={author.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
             <span className="text-xs text-gray-600">{author.name}</span>
           </div>
           <div className="flex items-center gap-2">
