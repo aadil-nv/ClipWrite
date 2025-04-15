@@ -2,66 +2,12 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { userInstance } from '../../middleware/axios';
 import { useNavigate } from 'react-router-dom';
-// import useAuth from '../../hooks/useAuth';
+import { fetchAllBlogs } from '../../api/blog.api';
+import { ApiResponse, Blog, BlogCardProps, BlogsProps } from '../../interfaces/blog.interface';
+import { containerVariants, itemVariants } from '../../utils/variants';
 
-// Define proper TypeScript interfaces
-interface Author {
-  _id: string;
-  name: string;
-  email: string;
-  mobile: string;
-  dob: string;
-  preferences: string[];
-  createdAt: string;
-  updatedAt: string;
-  image: string;
-}
 
-interface Blog {
-  _id: string;
-  title: string;
-  content: string;
-  author: Author;
-  tags: string[];
-  preference: string[];
-  image: string;
-  isPublished: boolean;
-  likeCount: number;
-  dislikeCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
-interface BlogsProps {
-  featuredBlog?: Blog;
-}
-
-interface ApiResponse {
-  message: string;
-  blogs: Blog[];
-}
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: "spring",
-      stiffness: 100
-    }
-  }
-};
 
 export default function Blogs({ featuredBlog }: BlogsProps) {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -77,30 +23,25 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
     return ['all', ...uniqueCategories];
   };
 
-  // Fetch blogs from API
   useEffect(() => {
-    const fetchBlogs = async () => {
+    const getBlogs = async () => {
       try {
         setIsLoading(true);
-        const response = await userInstance.get<ApiResponse>('api/blog/all-blogs');
-        setBlogs(response.data.blogs);
-        setIsLoading(false);
+        const blogsData = await fetchAllBlogs();
+        setBlogs(blogsData);
       } catch (error) {
         console.error('Error fetching blogs:', error);
+      } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchBlogs();
+
+    getBlogs();
   }, []);
 
-  // Function to like a blog
   const handleLikeBlog = async (blogId: string) => {
-    console.log("Blog ID: for likeikg ", blogId);
-    
     try {
       await userInstance.patch(`api/blog/like/${blogId}`);
-      // Refresh blogs to get updated like count
       const response = await userInstance.get<ApiResponse>('api/blog/all-blogs/');
       setBlogs(response.data.blogs);
     } catch (error) {
@@ -108,42 +49,33 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
     }
   };
 
-  // View single blog detail
   const viewBlogDetail = (blogId: string) => {
     navigate(`/user/blog/${blogId}`);
   };
 
-  // Filter blogs by category
   const filteredBlogs = activeCategory === 'all' 
     ? blogs 
     : blogs.filter(blog => blog.preference.includes(activeCategory));
   
-  // Reset to first page when changing category
   useEffect(() => {
     setCurrentPage(1);
   }, [activeCategory]);
 
-  // Get current blogs for pagination
   const indexOfLastBlog = currentPage * blogsPerPage;
   const indexOfFirstBlog = indexOfLastBlog - blogsPerPage;
   const currentBlogs = filteredBlogs.slice(indexOfFirstBlog, indexOfLastBlog);
 
-  // Calculate total pages
   const totalPages = Math.ceil(filteredBlogs.length / blogsPerPage);
 
-  // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-  // Featured blog (first blog if not provided)
   const displayedFeaturedBlog = featuredBlog || (blogs.length > 0 ? blogs[0] : null);
   
-  // Format date to readable format
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  // Calculate read time based on content length (rough estimate)
   const calculateReadTime = (content: string): number => {
     const wordsPerMinute = 200;
     const wordCount = content.split(/\s+/).length;
@@ -152,7 +84,6 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
 
   return (
     <div className="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      {/* Hero Section with Featured Blog */}
       {displayedFeaturedBlog && !isLoading && (
         <motion.div 
           className="mb-16"
@@ -376,14 +307,6 @@ export default function Blogs({ featuredBlog }: BlogsProps) {
   );
 }
 
-// BlogCard component for individual blog items
-interface BlogCardProps {
-  blog: Blog;
-  onLike: (blogId: string) => void;
-  onClick: () => void;
-  formatDate: (date: string) => string;
-  calculateReadTime: (content: string) => number;
-}
 
 function BlogCard({ blog, onLike, onClick, formatDate, calculateReadTime }: BlogCardProps) {
   const { _id, title, content, author, preference, image, likeCount, createdAt } = blog;

@@ -29,12 +29,18 @@ export const getAllMyBlogs = async (req: AuthRequest, res: Response, next: NextF
 
 // Update a blog
 export const updateBlog = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log("Updating blog with ID:", req.params.id);
+  
   try {
     const userId = req.user?.id;
-    const { blogId } = req.params;
+    console.log("User ID:", userId);
+    
+    const { id } = req.params;
+    console.log("Blog ID:", id);
+    
     const { title, content, tags, preference, image } = req.body;
 
-    const blog = await Blog.findOne({ _id: blogId, author: userId });
+    const blog = await Blog.findOne({ _id: id, author: userId });
     if (!blog) {
       return res.status(HttpStatusCode.NOT_FOUND).json({
         message: BLOG_MESSAGES.BLOG_NOT_FOUND,
@@ -62,9 +68,9 @@ export const updateBlog = async (req: AuthRequest, res: Response, next: NextFunc
 export const deleteBlog = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;
-    const { blogId } = req.params;
+    const { id } = req.params;
 
-    const blog = await Blog.findOneAndDelete({ _id: blogId, author: userId });
+    const blog = await Blog.findOneAndDelete({ _id: id, author: userId });
     if (!blog) {
       return res.status(HttpStatusCode.NOT_FOUND).json({
         message: BLOG_MESSAGES.BLOG_NOT_FOUND,
@@ -83,7 +89,8 @@ export const deleteBlog = async (req: AuthRequest, res: Response, next: NextFunc
 export const updateBlogPublishStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.id;
-      const { blogId, isPublished } = req.body;  // isPublished will be passed in the request body
+      const id = req.params.id;
+      const { isPublished } = req.body;  // isPublished will be passed in the request body
   
       // Ensure that the `isPublished` field is a boolean
       if (typeof isPublished !== 'boolean') {
@@ -92,7 +99,7 @@ export const updateBlogPublishStatus = async (req: AuthRequest, res: Response, n
         });
       }
   
-      const blog = await Blog.findOne({ _id: blogId, author: userId });
+      const blog = await Blog.findOne({ _id: id, author: userId });
       if (!blog) {
         return res.status(HttpStatusCode.NOT_FOUND).json({
           message: BLOG_MESSAGES.BLOG_NOT_FOUND,
@@ -116,11 +123,15 @@ export const updateBlogPublishStatus = async (req: AuthRequest, res: Response, n
   
 
   export const getBlogById = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    console.log("Blog ID:",);
+    
     try {
       const userId = req.user?.id;
-      const { blogId } = req.params;
+      const { id} = req.params;
+      console.log("Blog ID:", id);
+      
   
-      const blog = await Blog.findOne({ _id: blogId, author: userId }).populate("author");
+      const blog = await Blog.findOne({ _id: id, author: userId }).populate("author");
   
       if (!blog) {
         return res.status(HttpStatusCode.NOT_FOUND).json({

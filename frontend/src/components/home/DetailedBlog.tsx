@@ -232,8 +232,8 @@ export default function BlogDetail() {
         </motion.p>
         <motion.button 
           onClick={() => navigate('/blogs')}
-          className="px-6 py-3 bg-teal-600 text-white rounded-md hover:bg-teal-700 shadow-lg transition-all duration-300 transform"
-          whileHover={{ scale: 1.05, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
+          className="px-6 py-3 bg-teal-600 text-white rounded-md hover:bg-teal-700 shadow-lg transition-all duration-300"
+          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -256,11 +256,7 @@ export default function BlogDetail() {
       <motion.button 
         onClick={() => navigate('/blogs')}
         className="mb-4 md:mb-6 flex items-center text-teal-600 hover:text-teal-800 bg-teal-50 px-4 py-2 rounded-full shadow-sm transition-all duration-300"
-        whileHover={{ 
-          x: -5, 
-          backgroundColor: "#e6fffa", 
-          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
-        }}
+        whileHover={{ x: -5 }}
         whileTap={{ scale: 0.95 }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -269,24 +265,29 @@ export default function BlogDetail() {
         Back to Blogs
       </motion.button>
 
-      {/* Blog Header */}
-      <div className="mb-4 md:mb-6">
-        <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
-          {blog.preference.map((pref, index) => (
+      {/* Blog Header - Improved spacing and wrapping */}
+      <div className="mb-6">
+        {/* Category/Preference Tags with max-width to prevent overflow */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {blog.preference.slice(0, 5).map((pref, index) => (
             <motion.span 
               key={index} 
               className="bg-teal-100 text-teal-800 text-xs font-medium px-2 py-1 rounded-md"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
-              whileHover={{ backgroundColor: "#b2f5ea", y: -2 }}
             >
               {pref}
             </motion.span>
           ))}
+          {blog.preference.length > 5 && (
+            <span className="text-xs text-gray-500 self-center">+{blog.preference.length - 5} more</span>
+          )}
         </div>
+        
+        {/* Blog Title with word-break to prevent overflow */}
         <motion.h1 
-          className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4"
+          className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 break-words"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -294,10 +295,10 @@ export default function BlogDetail() {
           {blog.title}
         </motion.h1>
         
-        {/* Author and Meta Info */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 text-gray-600">
+        {/* Author and Meta Info - Improved for mobile */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 text-gray-600">
           <motion.div 
-            className="flex items-center mb-3 sm:mb-0"
+            className="flex items-center mb-4 md:mb-0"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -308,6 +309,7 @@ export default function BlogDetail() {
               <p className="text-sm">{formatDate(blog.createdAt)}</p>
             </div>
           </motion.div>
+          
           <motion.div 
             className="flex items-center gap-4"
             initial={{ opacity: 0, x: 20 }}
@@ -318,11 +320,9 @@ export default function BlogDetail() {
             <div className="flex items-center gap-2">
               <motion.button 
                 onClick={handleLikeBlog}
-                className={`flex items-center gap-1 ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                className={`flex items-center gap-1 ${isLiked ? 'text-red-500' : 'text-gray-500'}`}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                animate={isLiked ? { y: [0, -5, 0] } : {}}
-                transition={isLiked ? { duration: 0.3 } : {}}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -331,88 +331,91 @@ export default function BlogDetail() {
               </motion.button>
               <motion.button 
                 onClick={handleDislikeBlog}
-                className={`flex items-center gap-1 ${isDisliked ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'}`}
+                className={`flex items-center gap-1 ${isDisliked ? 'text-blue-500' : 'text-gray-500'}`}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                animate={isDisliked ? { y: [0, 5, 0] } : {}}
-                transition={isDisliked ? { duration: 0.3 } : {}}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isDisliked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
                 </svg>
-                {/* Removed dislike count */}
               </motion.button>
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Featured Image */}
+      {/* Featured Image - Added overflow control */}
       <motion.div 
-        className="mb-6 md:mb-8 overflow-hidden rounded-lg shadow-md"
+        className="mb-8 overflow-hidden rounded-lg shadow-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        whileHover={{ scale: 1.01, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
       >
         <img 
           src={blog.image} 
           alt={blog.title}
           className="w-full h-48 sm:h-64 md:h-80 object-cover object-center"
+          onError={(e) => {
+            // Fallback for broken images
+            e.currentTarget.src = "https://via.placeholder.com/800x400?text=Image+Not+Available";
+          }}
         />
       </motion.div>
 
-      {/* Blog Content */}
+      {/* Blog Content - Added overflow handling and proper text wrapping */}
       <motion.div 
-        className="prose max-w-none"
+        className="prose max-w-none overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.4 }}
       >
-        {/* Render content with proper formatting */}
-        {blog.content.split('\n').map((paragraph, index) => (
-          paragraph.trim() ? 
-            <motion.p 
-              key={index} 
-              className="mb-4"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.4 + (index * 0.1) }}
-            >
-              {paragraph}
-            </motion.p> : null
-        ))}
+        <div className="break-words whitespace-pre-wrap">
+          {blog.content.split('\n').map((paragraph, index) => (
+            paragraph.trim() ? 
+              <motion.p 
+                key={index} 
+                className="mb-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.4 + (index * 0.05) }}
+              >
+                {paragraph}
+              </motion.p> : null
+          ))}
+        </div>
       </motion.div>
 
-      {/* Tags */}
+      {/* Tags - Limited display with counter for overflow */}
       {blog.tags.length > 0 && (
         <motion.div 
-          className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-200"
+          className="mt-8 pt-6 border-t border-gray-200"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <h3 className="text-lg font-medium mb-2">Tags</h3>
           <div className="flex flex-wrap gap-2">
-            {blog.tags.map((tag, index) => (
+            {blog.tags.slice(0, 8).map((tag, index) => (
               <motion.span 
                 key={index} 
                 className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: 0.5 + (index * 0.1) }}
-                whileHover={{ scale: 1.05, backgroundColor: "#f3f4f6", y: -2, boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+                transition={{ duration: 0.3, delay: 0.5 + (index * 0.05) }}
               >
                 {tag}
               </motion.span>
             ))}
+            {blog.tags.length > 8 && (
+              <span className="text-sm text-gray-500 self-center">+{blog.tags.length - 8} more</span>
+            )}
           </div>
         </motion.div>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Responsive layout for different screen sizes */}
       <motion.div 
-        className="mt-6 md:mt-8 flex flex-col sm:flex-row sm:justify-between gap-3"
+        className="mt-8 flex flex-col sm:flex-row items-center gap-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
@@ -420,25 +423,18 @@ export default function BlogDetail() {
         <motion.button 
           onClick={() => navigate('/blogs')}
           className="w-full sm:w-auto px-5 py-2 bg-teal-50 text-teal-700 rounded-md border border-teal-200 shadow-sm transition-all duration-300"
-          whileHover={{ 
-            scale: 1.03, 
-            backgroundColor: "#e6fffa", 
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
-          }}
+          whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
           Back to Blogs
         </motion.button>
 
-        <div className="flex flex-col xs:flex-row gap-3 w-full sm:w-auto">
+        {/* Action buttons - stacked on mobile, side by side on larger screens */}
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3 mt-3 sm:mt-0 sm:ml-auto">
           <motion.button 
             onClick={confirmBlockBlog}
-            className="w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2 bg-gray-800 text-white rounded-md shadow-sm transition-all duration-300"
-            whileHover={{ 
-              scale: 1.03, 
-              backgroundColor: "#1a202c", 
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
-            }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 bg-gray-800 text-white rounded-md shadow-sm transition-all duration-300"
+            whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -449,18 +445,13 @@ export default function BlogDetail() {
           
           <motion.button 
             onClick={handleLikeBlog}
-            className={`w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-md shadow-sm transition-all duration-300 ${
+            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-md shadow-sm transition-all duration-300 ${
               isLiked 
                 ? 'bg-red-500 text-white hover:bg-red-600' 
                 : 'bg-teal-600 text-white hover:bg-teal-700'
             }`}
-            whileHover={{ 
-              scale: 1.03, 
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
-            }}
+            whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            animate={isLiked ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.3 }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -470,29 +461,23 @@ export default function BlogDetail() {
 
           <motion.button 
             onClick={handleDislikeBlog}
-            className={`w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-md shadow-sm transition-all duration-300 ${
+            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-md shadow-sm transition-all duration-300 ${
               isDisliked 
                 ? 'bg-blue-500 text-white hover:bg-blue-600' 
                 : 'bg-gray-400 text-white hover:bg-gray-500'
             }`}
-            whileHover={{ 
-              scale: 1.03, 
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
-            }}
+            whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            animate={isDisliked ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.3 }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isDisliked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
             </svg>
             {isDisliked ? 'Disliked' : 'Dislike'}
-            {/* Removed dislike count */}
           </motion.button>
         </div>
       </motion.div>
 
-      {/* Block Confirmation Modal */}
+      {/* Block Confirmation Modal - Fixed positioning */}
       <AnimatePresence>
         {showBlockConfirmation && (
           <motion.div 
@@ -509,25 +494,21 @@ export default function BlogDetail() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 400 }}
             >
-              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Confirm Block</h3>
-              <p className="mb-5 md:mb-6">Are you sure you want to block this blog? This action cannot be undone.</p>
-              <div className="flex flex-col xs:flex-row justify-end gap-3">
+              <h3 className="text-lg md:text-xl font-bold mb-4">Confirm Block</h3>
+              <p className="mb-6">Are you sure you want to block this blog? This action cannot be undone.</p>
+              <div className="flex justify-end gap-3">
                 <motion.button 
                   onClick={() => setShowBlockConfirmation(false)}
-                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 w-full xs:w-auto transition-all duration-300"
-                  whileHover={{ scale: 1.05, backgroundColor: "#e5e7eb" }}
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition-all duration-300"
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   Cancel
                 </motion.button>
                 <motion.button 
                   onClick={handleBlockBlog}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 w-full xs:w-auto shadow-sm transition-all duration-300"
-                  whileHover={{ 
-                    scale: 1.05, 
-                    backgroundColor: "#dc2626", 
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" 
-                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 shadow-sm transition-all duration-300"
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   Block Blog

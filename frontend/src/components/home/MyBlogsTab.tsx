@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit, Trash2, Eye, EyeOff, ThumbsUp, ThumbsDown, Plus } from 'lucide-react';
+import { Edit, Trash2, Eye, EyeOff, ThumbsUp, ThumbsDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {userInstance} from '../../middleware/axios'; // Adjust path as needed
 
@@ -42,7 +42,7 @@ const ConfirmationModal = ({
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 backdrop-blur-md bg-black/30 flex items-center justify-center z-50">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -72,6 +72,60 @@ const ConfirmationModal = ({
   );
 };
 
+// Pagination Component
+const Pagination = ({ 
+  currentPage, 
+  totalPages, 
+  onPageChange 
+}: { 
+  currentPage: number; 
+  totalPages: number; 
+  onPageChange: (page: number) => void;
+}) => {
+  return (
+    <div className="flex justify-center items-center space-x-2 mt-8">
+      <button 
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className={`p-2 rounded-md flex items-center justify-center ${
+          currentPage === 1 
+            ? 'text-gray-400 cursor-not-allowed' 
+            : 'text-indigo-600 hover:bg-indigo-50'
+        }`}
+      >
+        <ChevronLeft size={20} />
+      </button>
+      
+      {/* Display pagination numbers */}
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`w-8 h-8 rounded-md flex items-center justify-center ${
+            currentPage === page
+              ? 'bg-indigo-600 text-white'
+              : 'text-gray-700 hover:bg-indigo-50'
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+      
+      <button 
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className={`p-2 rounded-md flex items-center justify-center ${
+          currentPage === totalPages 
+            ? 'text-gray-400 cursor-not-allowed' 
+            : 'text-indigo-600 hover:bg-indigo-50'
+        }`}
+      >
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+};
+
 const MyBlogsTab: React.FC = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -87,6 +141,10 @@ const MyBlogsTab: React.FC = () => {
     message: "",
     onConfirm: () => {},
   });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [blogsPerPage] = useState(5);
   
   const navigate = useNavigate();
 
@@ -140,7 +198,7 @@ const MyBlogsTab: React.FC = () => {
         : "Are you sure you want to publish this blog? It will be visible to other users.",
       onConfirm: async () => {
         try {
-          await userInstance.patch("api/my-blogs/publish-status", {
+          await userInstance.patch(`api/my-blogs/publish-status/${blog._id}`, {
             blogId: blog._id,
             isPublished: !blog.isPublished
           });
@@ -184,6 +242,19 @@ const MyBlogsTab: React.FC = () => {
 
   const handleCreateNew = () => {
     navigate('/create-blog');
+  };
+
+  // Calculate pagination
+  const indexOfLastBlog = currentPage * blogsPerPage;
+  const indexOfFirstBlog = indexOfLastBlog - blogsPerPage;
+  const currentBlogs = blogs.slice(indexOfFirstBlog, indexOfLastBlog);
+  const totalPages = Math.ceil(blogs.length / blogsPerPage);
+
+  // Change page
+  const paginate = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // Scroll to top of page
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -230,7 +301,7 @@ const MyBlogsTab: React.FC = () => {
           className="grid gap-6"
         >
           <AnimatePresence>
-            {blogs.map((blog) => (
+            {currentBlogs.map((blog) => (
               <motion.div 
                 key={blog._id}
                 initial={{ opacity: 0, y: 20 }}
@@ -298,13 +369,13 @@ const MyBlogsTab: React.FC = () => {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           className={`p-2 rounded-full ${
-                            !blog.isPublished 
+                            blog.isPublished 
                               ? 'bg-green-50 text-green-600 hover:bg-green-100' 
                               : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                           }`}
                           onClick={() => handleTogglePublish(blog)}
                         >
-                          {!blog.isPublished ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {blog.isPublished ? <Eye size={16} /> : <EyeOff size={16} />}
                         </motion.button>
                       </div>
                     </div>
@@ -319,6 +390,15 @@ const MyBlogsTab: React.FC = () => {
               </motion.div>
             ))}
           </AnimatePresence>
+          
+          {/* Pagination Controls */}
+          {blogs.length > blogsPerPage && (
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={paginate}
+            />
+          )}
         </motion.div>
       ) : (
         <motion.div 
@@ -328,6 +408,13 @@ const MyBlogsTab: React.FC = () => {
         >
           No blogs found. Create your first blog to get started!
         </motion.div>
+      )}
+      
+      {/* Show statistics if there are blogs */}
+      {blogs.length > 0 && (
+        <div className="mt-6 text-sm text-gray-500 text-center">
+          Showing {indexOfFirstBlog + 1}-{Math.min(indexOfLastBlog, blogs.length)} of {blogs.length} blogs
+        </div>
       )}
       
       {/* Confirmation Modal */}

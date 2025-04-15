@@ -12,8 +12,8 @@ import {
 
 // Import services
 import { uploadToCloudinary } from '../../api/cloudinary.api';
-import { updateBlog, getBlogById } from '../../api/blog.api'; // We'll need to create this function
-import { useParams, useNavigate } from 'react-router-dom'; // For getting blog ID from URL and navigation
+import { updateBlog, getBlogById } from '../../api/blog.api';
+import { useParams, useNavigate } from 'react-router-dom';
 
 interface BlogFormData {
   title: string;
@@ -32,7 +32,9 @@ const predefinedPreferences = [
 ];
 
 export default function EditBlog(): ReactElement {
-  const { blogId } = useParams<{ blogId: string }>();
+  const { id } = useParams<{ id: string }>();
+  console.log("Blog ID: from edit blog", id);
+  
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState<BlogFormData>({
@@ -54,15 +56,16 @@ export default function EditBlog(): ReactElement {
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [imageChanged, setImageChanged] = useState<boolean>(false); // Track if image has been changed
 
   // Fetch blog data when component mounts
   useEffect(() => {
     const fetchBlogData = async () => {
-      if (!blogId) return;
+      if (!id) return;
       
       try {
         setIsLoading(true);
-        const blogData = await getBlogById(blogId);
+        const blogData = await getBlogById(id);
         
         // Populate form with existing blog data
         setFormData({
@@ -89,7 +92,7 @@ export default function EditBlog(): ReactElement {
     };
     
     fetchBlogData();
-  }, [blogId]);
+  }, [id]);
 
   // Add fadeIn animation via useEffect
   useEffect(() => {
@@ -149,6 +152,7 @@ export default function EditBlog(): ReactElement {
 
   const processImageFile = (file: File): void => {
     setImageFile(file);
+    setImageChanged(true); // Mark image as changed
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
@@ -220,6 +224,17 @@ export default function EditBlog(): ReactElement {
     }
   };
 
+  const handleRemoveImage = (e: React.MouseEvent): void => {
+    e.stopPropagation();
+    setPreviewImage('');
+    setImageFile(null);
+    setImageChanged(true); // Mark image as changed (removed)
+    setFormData({
+      ...formData,
+      image: ''
+    });
+  };
+
   const handleCancel = (): void => {
     navigate('/blogs'); // Navigate back to blogs list
   };
@@ -233,7 +248,7 @@ export default function EditBlog(): ReactElement {
       return;
     }
     
-    if (!blogId) {
+    if (!id) {
       setErrorMessage("Blog ID is missing");
       return;
     }
@@ -242,18 +257,23 @@ export default function EditBlog(): ReactElement {
     setErrorMessage(null);
     
     try {
-      // First upload image to Cloudinary if there is a new one
+      // Only upload image to Cloudinary if a new one was selected or the image was changed
       let finalImageUrl = formData.image;
       
-      if (imageFile) {
-        console.log("Image file detected, starting upload process");
-        const cloudinaryUrl = await uploadImage();
-        if (cloudinaryUrl) {
-          finalImageUrl = cloudinaryUrl;
-          console.log("Setting image URL in form data:", cloudinaryUrl);
+      if (imageChanged) {
+        if (imageFile) {
+          console.log("Image file detected, starting upload process");
+          const cloudinaryUrl = await uploadImage();
+          if (cloudinaryUrl) {
+            finalImageUrl = cloudinaryUrl;
+            console.log("Setting image URL in form data:", cloudinaryUrl);
+          } else {
+            // If image upload failed, alert user and stop submission
+            throw new Error('Image upload failed');
+          }
         } else {
-          // If image upload failed, alert user and stop submission
-          throw new Error('Image upload failed');
+          // If image was removed, set to empty string
+          finalImageUrl = '';
         }
       }
       
@@ -264,7 +284,7 @@ export default function EditBlog(): ReactElement {
       };
       
       // Send the updated blog data to the API
-      const response = await updateBlog(blogId, finalFormData);
+      const response = await updateBlog(id, finalFormData);
       console.log('Blog post updated:', response);
       
       setSubmitSuccess(true);
@@ -392,15 +412,7 @@ export default function EditBlog(): ReactElement {
                   />
                   <button 
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewImage('');
-                      setImageFile(null);
-                      setFormData({
-                        ...formData,
-                        image: ''
-                      });
-                    }}
+                    onClick={handleRemoveImage}
                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   >
                     <X size={16} />
@@ -411,6 +423,12 @@ export default function EditBlog(): ReactElement {
                 </div>
               )}
             </div>
+            {/* Show indicator if image has been changed */}
+            {imageChanged && (
+              <p className="text-xs text-blue-600 mt-2 italic">
+                Image has been changed and will be uploaded when you update the blog post
+              </p>
+            )}
           </div>
           
           {/* Content */}

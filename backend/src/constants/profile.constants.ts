@@ -5,6 +5,7 @@ export const PROFILE_MESSAGES = {
     PROFILE_UPDATED: "Profile updated successfully",
     PASSWORD_UPDATED: "Password updated successfully",
     INCORRECT_CURRENT_PASSWORD: "Current password is incorrect",
+    PREFERENCES_UPDATED: 'Preferences updated successfully.',
   };
   
   export const ALLOWED_PREFERENCES = [

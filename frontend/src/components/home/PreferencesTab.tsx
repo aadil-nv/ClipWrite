@@ -1,228 +1,151 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import  { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import useAuth from '../../hooks/useAuth';
+import { userInstance } from '../../middleware/axios';
+import { updateUserData } from '../../redux/slices/userSlice';
 
-interface UserPreferences {
-  darkMode: boolean;
-  notifications: boolean;
-  emailUpdates: boolean;
-  contentCategories: string[];
-  privacySettings: {
-    profileVisibility: 'public' | 'friends' | 'private';
-    showOnlineStatus: boolean;
-  };
-}
-
-const PreferencesTab: React.FC = () => {
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    darkMode: true,
-    notifications: true,
-    emailUpdates: false,
-    contentCategories: ['Technology', 'Travel', 'Food'],
-    privacySettings: {
-      profileVisibility: 'public',
-      showOnlineStatus: true
-    }
-  });
-
-  // Available content categories
+export default function PreferencesTab() {
+  const { user } = useAuth();
+  const dispatch = useDispatch();
+  
+  // Initialize state with user preferences or empty array
+  const [selectedPreferences, setSelectedPreferences] = useState<string[]>(
+    user?.userData?.preferences && Array.isArray(user.userData.preferences) 
+      ? user.userData.preferences 
+      : []
+  );
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  
+  // Available categories list
   const availableCategories = [
-    'Technology', 'Travel', 'Food', 'Fashion', 'Sports', 
-    'Health', 'Education', 'Entertainment', 'Business', 'Art'
+    'travel', 'food', 'lifestyle', 'fitness', 'technology',
+    'gaming', 'fashion', 'education', 'music', 'daily routine',
   ];
 
-  const toggleCategory = (category: string): void => {
-    if (preferences.contentCategories.includes(category)) {
-      setPreferences({
-        ...preferences,
-        contentCategories: preferences.contentCategories.filter(c => c !== category)
-      });
+  // Toggle preference selection
+  const togglePreference = (category: string) => {
+    if (selectedPreferences.includes(category)) {
+      setSelectedPreferences(selectedPreferences.filter(pref => pref !== category));
     } else {
-      setPreferences({
-        ...preferences,
-        contentCategories: [...preferences.contentCategories, category]
-      });
+      setSelectedPreferences([...selectedPreferences, category]);
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const { name, checked } = e.target;
-    setPreferences(prev => ({
-      ...prev,
-      [name]: checked
-    }));
+  // Check if a category is selected
+  const isSelected = (category: string) => {
+    return selectedPreferences.includes(category);
   };
 
-  const handlePrivacyChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
-    const { name, value, type } = e.target;
-    const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
+  // Save preferences to API
+  const savePreferences = async () => {
+    setIsLoading(true);
+    setMessage({ text: '', type: '' });
     
-    setPreferences(prev => ({
-      ...prev,
-      privacySettings: {
-        ...prev.privacySettings,
-        [name]: checked !== undefined ? checked : value
-      }
-    }));
-  };
-
-  const handleSave = () => {
-    // Save preferences logic would go here
-    console.log('Preferences saved:', preferences);
-  };
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        staggerChildren: 0.1
-      }
+    try {
+      await userInstance.post('api/profile/preferences', {
+        preferences: selectedPreferences
+      });
+      
+      // Update Redux store
+      dispatch(updateUserData({
+        userData: {
+          ...user.userData,
+          preferences: selectedPreferences
+        }
+      }));
+      
+      setMessage({ 
+        text: 'Preferences saved successfully!', 
+        type: 'success' 
+      });
+      
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      setMessage({ 
+        text: 'Failed to save preferences. Please try again.', 
+        type: 'error' 
+      });
+    } finally {
+      setIsLoading(false);
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        setMessage({ text: '', type: '' });
+      }, 5000);
     }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1 }
   };
 
   return (
-    <div className="p-6">
-      <motion.h2 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-2xl font-semibold mb-6 text-indigo-800"
-      >
-        Preferences
-      </motion.h2>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Content Preferences</h2>
       
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="space-y-8"
-      >
-        {/* App Settings Section */}
-        <motion.div variants={itemVariants} className="bg-gray-50 p-6 rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-indigo-700">App Settings</h3>
-          <div className="space-y-3">
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="darkMode" 
-                name="darkMode"
-                className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" 
-                checked={preferences.darkMode}
-                onChange={handleCheckboxChange}
-              />
-              <label htmlFor="darkMode" className="ml-3 text-gray-700">Dark Mode</label>
-            </div>
-            
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="notifications" 
-                name="notifications"
-                className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" 
-                checked={preferences.notifications}
-                onChange={handleCheckboxChange}
-              />
-              <label htmlFor="notifications" className="ml-3 text-gray-700">Push Notifications</label>
-            </div>
-            
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="emailUpdates" 
-                name="emailUpdates"
-                className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" 
-                checked={preferences.emailUpdates}
-                onChange={handleCheckboxChange}
-              />
-              <label htmlFor="emailUpdates" className="ml-3 text-gray-700">Email Updates</label>
-            </div>
-          </div>
-        </motion.div>
+      {/* Status message */}
+      {message.text && (
+        <div className={`mb-6 p-4 rounded-md ${
+          message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          {message.text}
+        </div>
+      )}
+      
+      <div className="mb-8">
+        <h3 className="text-lg font-medium mb-3 text-gray-700">Select your interests:</h3>
+        <p className="text-gray-600 mb-6">Choose categories that match your content interests.</p>
         
-        {/* Content Preferences Section */}
-        <motion.div variants={itemVariants} className="bg-gray-50 p-6 rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-indigo-700">Content Preferences</h3>
-          <p className="text-gray-600 mb-4">Select categories you're interested in:</p>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {availableCategories.map(category => (
-              <motion.div 
-                key={category}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`px-4 py-2 rounded-full cursor-pointer transition-colors duration-200 text-center ${
-                  preferences.contentCategories.includes(category)
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-                onClick={() => toggleCategory(category)}
+        {/* Categories grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {availableCategories.map(category => (
+            <button
+              key={category}
+              onClick={() => togglePreference(category)}
+              className={`px-4 py-3 rounded-lg transition-all duration-200 ${
+                isSelected(category)
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Selected preferences section */}
+      <div className="mb-8">
+        <h3 className="text-lg font-medium mb-3 text-gray-700">Your selected preferences:</h3>
+        
+        {selectedPreferences.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {selectedPreferences.map(pref => (
+              <span 
+                key={pref} 
+                className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
               >
-                {category}
-              </motion.div>
+                {pref}
+              </span>
             ))}
           </div>
-        </motion.div>
-        
-        {/* Privacy Settings Section */}
-        <motion.div variants={itemVariants} className="bg-gray-50 p-6 rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-indigo-700">Privacy Settings</h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="profileVisibility" className="block text-gray-700 mb-2">
-                Profile Visibility
-              </label>
-              <select
-                id="profileVisibility"
-                name="profileVisibility"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={preferences.privacySettings.profileVisibility}
-                onChange={handlePrivacyChange}
-              >
-                <option value="public">Public (Everyone can see)</option>
-                <option value="friends">Friends Only</option>
-                <option value="private">Private (Only me)</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="showOnlineStatus" 
-                name="showOnlineStatus"
-                className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" 
-                checked={preferences.privacySettings.showOnlineStatus}
-                onChange={handlePrivacyChange}
-              />
-              <label htmlFor="showOnlineStatus" className="ml-3 text-gray-700">
-                Show Online Status
-              </label>
-            </div>
-          </div>
-        </motion.div>
-        
-        {/* Save Button */}
-        <motion.div 
-          variants={itemVariants}
-          className="flex justify-center"
+        ) : (
+          <p className="text-gray-500 italic">No preferences selected yet.</p>
+        )}
+      </div>
+      
+      {/* Save button */}
+      <div className="flex justify-center mt-8">
+        <button
+          onClick={savePreferences}
+          disabled={isLoading}
+          className={`px-8 py-3 bg-blue-600 text-white rounded-lg font-medium transition-all ${
+            isLoading 
+              ? 'opacity-70 cursor-not-allowed' 
+              : 'hover:bg-blue-700 hover:shadow-lg'
+          }`}
         >
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
-            onClick={handleSave}
-          >
-            Save Preferences
-          </motion.button>
-        </motion.div>
-      </motion.div>
+          {isLoading ? 'Saving...' : 'Save Preferences'}
+        </button>
+      </div>
     </div>
   );
-};
-
-export default PreferencesTab;
+}

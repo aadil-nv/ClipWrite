@@ -5,6 +5,7 @@ import { HttpStatusCode } from "../utils/enums";
 import { Blog } from "../models/blog.scheema";
 import { AuthRequest } from "../utils/interface";
 import mongoose from "mongoose";
+import { User } from "../models/user.scheema";
 
 export const createBlog = async (req: AuthRequest, res: Response, next: NextFunction) => {
   console.log("hitting here0", req.body);
@@ -41,9 +42,32 @@ export const createBlog = async (req: AuthRequest, res: Response, next: NextFunc
   }
 };
 
-export const getAllBlogs = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllBlogs = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const blogs = await Blog.find({}).populate("author");
+    const myId = req.user?.id;
+
+    // Get logged-in user's preferences
+    const user = await User.findById(myId);
+
+    const userPreferences = user?.preferences || [];
+
+    const blogs = await Blog.find({
+      $and: [
+        {
+          $or: [
+            { isPublished: true },
+            { author: myId }
+          ]
+        },
+        {
+          blockedUsers: { $ne: myId }
+        },
+        {
+          preference: { $in: userPreferences }
+        }
+      ]
+    }).populate("author");
+
     res.status(HttpStatusCode.OK).json({
       message: BLOG_MESSAGES.ALL_BLOGS_FETCHED,
       blogs,
@@ -52,6 +76,7 @@ export const getAllBlogs = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
 
 export const getBlogById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

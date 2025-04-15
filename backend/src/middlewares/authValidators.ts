@@ -170,7 +170,6 @@ export const createBlogValidation = [
     .withMessage("Invalid preference value"),
 
   body("image")
-    .optional()
     .isString()
     .withMessage("Image must be a valid string URL"),
 

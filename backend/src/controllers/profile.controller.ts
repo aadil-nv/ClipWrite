@@ -115,3 +115,50 @@ export const changePassword = async (req: AuthRequest, res: Response, next: Next
     }
   };
   
+
+  export const changePreferences = async (req: AuthRequest, res: Response, next: NextFunction) => {
+
+    console.log("hitting hcnage prefrences");
+    
+    try {
+      const userId = req.user?.id;
+  
+      if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          message: PROFILE_MESSAGES.INVALID_USER_ID,
+        });
+      }
+  
+      const { preferences } = req.body;
+  
+      if (
+        !preferences ||
+        !Array.isArray(preferences) ||
+        !preferences.every((pref: string) => ALLOWED_PREFERENCES.includes(pref))
+      ) {
+        return res.status(HttpStatusCode.BAD_REQUEST).json({
+          message: PROFILE_MESSAGES.INVALID_PREFERENCES,
+        });
+      }
+  
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { preferences },
+        { new: true }
+      );
+  
+      if (!updatedUser) {
+        return res.status(HttpStatusCode.NOT_FOUND).json({
+          message: PROFILE_MESSAGES.USER_NOT_FOUND,
+        });
+      }
+  
+      res.status(HttpStatusCode.OK).json({
+        message: PROFILE_MESSAGES.PREFERENCES_UPDATED,
+        user: updatedUser,
+      }); 
+    } catch (error) {
+      next(error);
+    }
+  };
+  
