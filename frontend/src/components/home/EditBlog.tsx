@@ -1,14 +1,5 @@
 import { useState, useEffect, ChangeEvent, FormEvent, ReactElement } from 'react';
-import { 
-  PenTool, 
-  Image as ImageIcon, 
-  FileText, 
-  Tag, 
-  Plus, 
-  X, 
-  Save, 
-  Upload
-} from 'lucide-react';
+import { PenTool, Image as ImageIcon, FileText, Tag, Plus, X, Save, Upload} from 'lucide-react';
 
 // Import services
 import { uploadToCloudinary } from '../../api/cloudinary.api';

@@ -1,42 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { userInstance } from '../../middleware/axios';
 import useAuth from '../../hooks/useAuth';
+import { Blog } from '../../interfaces/blog.interface';
+import { getBlogByIdForDetails, likeBlog } from '../../api/blog.api';
 
-// Define proper TypeScript interfaces
-interface Author {
-  _id: string;
-  name: string;
-  email: string;
-  mobile: string;
-  dob: string;
-  preferences: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Blog {
-  _id: string;
-  title: string;
-  content: string;
-  author: Author;
-  tags: string[];
-  preference: string[];
-  image: string;
-  isPublished: boolean;
-  likeCount: number;
-  dislikeCount: number;
-  likedBy: string[];
-  dislikedBy: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ApiResponse {
-  message: string;
-  blog: Blog;
-}
 
 interface AuthUser {
   userId: string;
@@ -61,22 +30,21 @@ export default function BlogDetail() {
         if (!id) {
           throw new Error("Blog ID is missing");
         }
-        const response = await userInstance.get<ApiResponse>(`api/blog/blogs/${id}`);
-        const fetchedBlog = response.data.blog;
+
+        const fetchedBlog = await getBlogByIdForDetails(id);
         setBlog(fetchedBlog);
-        
-        // Check if user has already liked or disliked based on userId
-        if (fetchedBlog.likedBy && fetchedBlog.likedBy.includes(userId)) {
+
+        if (fetchedBlog.likedBy?.includes(userId)) {
           setIsLiked(true);
         }
-        if (fetchedBlog.dislikedBy && fetchedBlog.dislikedBy.includes(userId)) {
+        if (fetchedBlog.dislikedBy?.includes(userId)) {
           setIsDisliked(true);
         }
-        
-        setIsLoading(false);
+
       } catch (error) {
         console.error('Error fetching blog details:', error);
         setError('Failed to load blog. Please try again later.');
+      } finally {
         setIsLoading(false);
       }
     };
@@ -89,44 +57,40 @@ export default function BlogDetail() {
     }
   }, [id, userId]);
 
-  // Function to like a blog
   const handleLikeBlog = async () => {
     if (!blog) return;
-    
+  
     try {
-      // Update UI immediately for better UX before API call
       if (isDisliked) {
         setIsDisliked(false);
-        setBlog(prev => prev ? {...prev, dislikeCount: Math.max(0, prev.dislikeCount - 1)} : null);
+        setBlog(prev => prev ? {
+          ...prev,
+          dislikeCount: Math.max(0, prev.dislikeCount - 1)
+        } : null);
       }
-      
-      // Toggle like state
+  
       const newLikedState = !isLiked;
       setIsLiked(newLikedState);
-      
-      // Update like count immediately
+  
       setBlog(prev => {
         if (!prev) return null;
         return {
           ...prev,
-          likeCount: newLikedState 
-            ? prev.likeCount + 1 
+          likeCount: newLikedState
+            ? prev.likeCount + 1
             : Math.max(0, prev.likeCount - 1)
         };
       });
-      
-      // Make API call
-      await userInstance.patch(`api/blog/like/${blog._id}`);
-      
+  
+      await likeBlog(blog._id);
+  
     } catch (error) {
       console.error('Error liking blog:', error);
-      // Revert UI changes on error
-      setIsLiked(!isLiked);
-      setBlog(prev => prev ? {...prev} : null);
+      setIsLiked(!isLiked); 
+      setBlog(prev => prev ? { ...prev } : null);
     }
   };
 
-  // Function to dislike a blog
   const handleDislikeBlog = async () => {
     if (!blog) return;
     
@@ -163,18 +127,15 @@ export default function BlogDetail() {
     }
   };
 
-  // Function to confirm block action
   const confirmBlockBlog = () => {
     setShowBlockConfirmation(true);
   };
 
-  // Function to block a blog after confirmation
   const handleBlockBlog = async () => {
     if (!blog) return;
     
     try {
       await userInstance.patch(`api/blog/block/${blog._id}`);
-      // Navigate away after blocking
       navigate('/blogs');
     } catch (error) {
       console.error('Error blocking blog:', error);
@@ -182,7 +143,6 @@ export default function BlogDetail() {
     }
   };
 
-  // Format date to readable format
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -192,7 +152,6 @@ export default function BlogDetail() {
     });
   };
 
-  // Calculate read time based on content length
   const calculateReadTime = (content: string): number => {
     const wordsPerMinute = 200;
     const wordCount = content.split(/\s+/).length;

@@ -4,6 +4,7 @@ import { uploadToCloudinary } from '../../api/cloudinary.api';
 import { useSelector, useDispatch } from 'react-redux';
 import { updateUserData } from '../../redux/slices/userSlice';
 import { userInstance } from '../../middleware/axios';
+import toast from 'react-hot-toast'; // Import toast for notifications
 
 // Define proper types for Redux state
 interface RootState {
@@ -30,6 +31,14 @@ interface ProfileData {
   imageUrl?: string;
 }
 
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+  mobile?: string;
+  dob?: string;
+  image?: string;
+}
+
 const ProfileDetailsTab: React.FC = () => {
   const dispatch = useDispatch();
   const userData = useSelector((state: RootState) => state.user.userData);
@@ -46,8 +55,7 @@ const ProfileDetailsTab: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Format ISO date string to YYYY-MM-DD for input[type="date"]
@@ -58,7 +66,6 @@ const ProfileDetailsTab: React.FC = () => {
       return date.toISOString().split('T')[0];
     } catch (error) {
       console.log('Error formatting date:', error);
-      
       return '';
     }
   };
@@ -87,6 +94,114 @@ const ProfileDetailsTab: React.FC = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear related error when field is modified
+    if (errors[name as keyof ValidationErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+  };
+
+  // Validation functions
+  const validateName = (name: string): string | undefined => {
+    if (!name.trim()) return "Name is required";
+    if (name.trim().length < 2) return "Name must be at least 2 characters";
+    return undefined;
+  };
+
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) return "Email is required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    return undefined;
+  };
+
+  const validateMobile = (mobile: string): string | undefined => {
+    if (!mobile.trim()) return "Mobile number is required";
+    
+    // Check for 10 digits
+    if (!/^\d{10}$/.test(mobile)) {
+      return "Mobile number must be exactly 10 digits";
+    }
+    
+    // Check for consecutive digits (1234567890)
+    if (/01234567890/.test(mobile)) {
+      return "Mobile number cannot be sequential digits";
+    }
+    
+    // Check for same consecutive digits (e.g., 1111111111)
+    if (/^(\d)\1{9}$/.test(mobile)) {
+      return "Mobile number cannot be all same digits";
+    }
+    
+    return undefined;
+  };
+
+  const validateDOB = (dob: string): string | undefined => {
+    if (!dob) return "Date of birth is required";
+    
+    const dobDate = new Date(dob);
+    const today = new Date();
+    
+    // Check if DOB is in the future
+    if (dobDate > today) {
+      return "Date of birth cannot be in the future";
+    }
+    
+    // Check if person is at least 13 years old (common minimum age for many services)
+    const thirteenYearsAgo = new Date();
+    thirteenYearsAgo.setFullYear(today.getFullYear() - 13);
+    if (dobDate > thirteenYearsAgo) {
+      return "You must be at least 13 years old";
+    }
+    
+    // Check if DOB is too far in the past (e.g., more than 120 years)
+    const maxAge = new Date();
+    maxAge.setFullYear(today.getFullYear() - 120);
+    if (dobDate < maxAge) {
+      return "Please enter a valid date of birth";
+    }
+    
+    return undefined;
+  };
+
+  const validateImage = (file: File | null): string | undefined => {
+    if (!file && !previewImage) return "Profile image is required";
+    if (!file) return undefined;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      return "Image size should be less than 5MB";
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return "Please upload a valid image (JPEG, PNG, WEBP)";
+    }
+    
+    return undefined;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {
+      name: validateName(profileData.name),
+      email: validateEmail(profileData.email),
+      mobile: validateMobile(profileData.mobile),
+      dob: validateDOB(profileData.dob),
+      image: validateImage(profileData.image)
+    };
+    
+    setErrors(newErrors);
+    
+    // Show first error in toast if any errors exist
+    const errorValues = Object.values(newErrors).filter(error => error !== undefined);
+    if (errorValues.length > 0) {
+      toast.error(errorValues[0]);
+      return false;
+    }
+    
+    return true;
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,13 +209,10 @@ const ProfileDetailsTab: React.FC = () => {
     if (!file) return;
     
     // Validate file
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('Image size should be less than 5MB');
-      return;
-    }
-    
-    if (!file.type.includes('image/')) {
-      setErrorMessage('Please upload a valid image file');
+    const imageError = validateImage(file);
+    if (imageError) {
+      setErrors(prev => ({ ...prev, image: imageError }));
+      toast.error(imageError);
       return;
     }
 
@@ -113,7 +225,7 @@ const ProfileDetailsTab: React.FC = () => {
     };
     reader.readAsDataURL(file);
     
-    setErrorMessage(null);
+    setErrors(prev => ({ ...prev, image: undefined }));
     
     // Upload to Cloudinary
     try {
@@ -133,11 +245,12 @@ const ProfileDetailsTab: React.FC = () => {
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
+        toast.success('Image uploaded successfully!');
       }, 500);
       
     } catch (error) {
       console.error('Error uploading image:', error);
-      setErrorMessage('Failed to upload image. Please try again.');
+      toast.error('Failed to upload image. Please try again.');
       setIsUploading(false);
       setUploadProgress(0);
     }
@@ -145,9 +258,13 @@ const ProfileDetailsTab: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all fields before submission
+    if (!validateForm()) {
+      return;
+    }
+    
     setIsLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
     
     try {
       // Prepare data for submission
@@ -156,13 +273,12 @@ const ProfileDetailsTab: React.FC = () => {
         email: profileData.email,
         mobile: profileData.mobile,
         dob: profileData.dob,
-        image: profileData.imageUrl || null
+        image: profileData.imageUrl || previewImage
       };
       
-
-        console.log("profilePayload",profilePayload);
+      console.log("profilePayload", profilePayload);
         
-       await userInstance.post("api/profile/profile", profilePayload);
+      await userInstance.post("api/profile/profile", profilePayload);
       
       // Update Redux store with updated profile data while preserving preferences
       dispatch(updateUserData({
@@ -172,10 +288,10 @@ const ProfileDetailsTab: React.FC = () => {
         }
       }));
       
-      setSuccessMessage('Profile updated successfully!');
+      toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
-      setErrorMessage('Failed to update profile. Please try again.');
+      toast.error('Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -190,26 +306,6 @@ const ProfileDetailsTab: React.FC = () => {
       >
         Profile Details
       </motion.h2>
-      
-      {errorMessage && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200"
-        >
-          {errorMessage}
-        </motion.div>
-      )}
-      
-      {successMessage && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg border border-green-200"
-        >
-          {successMessage}
-        </motion.div>
-      )}
       
       <form onSubmit={handleSubmit}>
         {/* Profile Image Section */}
@@ -285,49 +381,108 @@ const ProfileDetailsTab: React.FC = () => {
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/jpg,image/webp"
             onChange={handleImageChange}
           />
           
           <p className="mt-3 text-gray-500 text-sm">
             Click to upload profile photo
           </p>
-          {profileData.image && !isUploading && (
+          {errors.image && (
+            <p className="text-xs text-red-500 mt-1">{errors.image}</p>
+          )}
+          {profileData.image && !isUploading && !errors.image && (
             <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-xs text-indigo-600 mt-1"
             >
-              {profileData.imageUrl ? 'Image uploaded successfully!' : profileData.image.name}
+              {profileData.image.name}
             </motion.p>
           )}
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Form Fields */}
-          {[
-            { label: "Full Name", name: "name", type: "text" },
-            { label: "Email", name: "email", type: "email" },
-            { label: "Mobile", name: "mobile", type: "text" },
-            { label: "Date of Birth", name: "dob", type: "date" }
-          ].map((field, index) => (
-            <motion.div 
-              key={field.name}
-              initial={{ x: index % 2 === 0 ? -20 : 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.2 + (index * 0.1) }}
-            >
-              <label className="block text-indigo-700 mb-2 font-medium">{field.label}</label>
-              <input 
-                type={field.type} 
-                name={field.name}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-                value={profileData[field.name as keyof ProfileData] as string}
-                onChange={handleInputChange}
-                required
-              />
-            </motion.div>
-          ))}
+          {/* Name Field */}
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <label className="block text-indigo-700 mb-2 font-medium">Full Name</label>
+            <input 
+              type="text" 
+              name="name"
+              className={`w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              value={profileData.name}
+              onChange={handleInputChange}
+              placeholder="Enter your full name"
+            />
+            {errors.name && (
+              <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+            )}
+          </motion.div>
+
+          {/* Email Field */}
+          <motion.div 
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <label className="block text-indigo-700 mb-2 font-medium">Email</label>
+            <input 
+              type="email" 
+              name="email"
+              className={`w-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              value={profileData.email}
+              onChange={handleInputChange}
+              placeholder="yourname@example.com"
+            />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+            )}
+          </motion.div>
+
+          {/* Mobile Field */}
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <label className="block text-indigo-700 mb-2 font-medium">Mobile</label>
+            <input 
+              type="text" 
+              name="mobile"
+              className={`w-full border ${errors.mobile ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              value={profileData.mobile}
+              onChange={handleInputChange}
+              maxLength={10}
+              placeholder="10-digit mobile number"
+            />
+            {errors.mobile && (
+              <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
+            )}
+          </motion.div>
+
+          {/* Date of Birth Field */}
+          <motion.div 
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <label className="block text-indigo-700 mb-2 font-medium">Date of Birth</label>
+            <input 
+              type="date" 
+              name="dob"
+              max={new Date().toISOString().split('T')[0]} // Prevents future dates
+              className={`w-full border ${errors.dob ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              value={profileData.dob}
+              onChange={handleInputChange}
+            />
+            {errors.dob && (
+              <p className="text-red-500 text-xs mt-1">{errors.dob}</p>
+            )}
+          </motion.div>
         </div>
         
         <motion.button 

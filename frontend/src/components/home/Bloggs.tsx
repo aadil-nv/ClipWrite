@@ -8,7 +8,6 @@ import { containerVariants, itemVariants } from '../../utils/variants';
 
 
 
-
 export default function Blogs({ featuredBlog }: BlogsProps) {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -345,13 +344,13 @@ function BlogCard({ blog, onLike, onClick, formatDate, calculateReadTime }: Blog
         </p>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="h-6 w-6 bg-gray-300 rounded-full mr-2">
-              <img 
-                src={author.image} 
-                alt={author.name}
-                className="h-full w-full object-cover"
-              />
-            </div>
+          <div className="h-6 w-6 rounded-full overflow-hidden mr-2 bg-gray-300">
+  <img 
+    src={author.image} 
+    alt={author.name}
+    className="h-full w-full object-cover"
+  />
+</div>
             <span className="text-xs text-gray-600">{author.name}</span>
           </div>
           <div className="flex items-center gap-2">

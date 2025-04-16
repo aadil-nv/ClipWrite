@@ -7,18 +7,17 @@ import {
   Plus, 
   X, 
   Save, 
-  Upload
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 
 // Import services
 import { uploadToCloudinary } from '../../api/cloudinary.api';
 import { createNewBlog } from '../../api/blog.api';
+import { message } from 'antd';
+import toast from 'react-hot-toast';
+import { AxiosError } from 'axios';
 
-// Import types - Updated to match validation schema
-// interface BlogTag {
-//   id: string;
-//   name: string;
-// }
 
 interface BlogFormData {
   title: string;
@@ -28,6 +27,14 @@ interface BlogFormData {
   tags: string[];
   preference: string[]; // Changed from single preference to array of preference
   isPublished: boolean;
+}
+
+interface ValidationErrors {
+  title?: string;
+  content?: string;
+  image?: string;
+  tags?: string;
+  preference?: string;
 }
 
 // Predefined preferences list based on validation requirements
@@ -55,6 +62,9 @@ export default function NewBlog(): ReactElement {
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [imageRequired, setImageRequired] = useState<boolean>(false); // Flag to determine if image is required
 
   // Add fadeIn animation via useEffect
   useEffect(() => {
@@ -83,12 +93,66 @@ export default function NewBlog(): ReactElement {
     });
   }, []);
 
+  // Validate form when formData changes
+  useEffect(() => {
+    validateForm();
+  }, [formData, imageRequired, imageFile]);
+
+  // Validation function
+  const validateForm = (): ValidationErrors => {
+    const errors: ValidationErrors = {};
+    
+    // Title validation
+    if (formData.title.trim() === '') {
+      errors.title = 'Title is required';
+    } else if (formData.title.length < 3) {
+      errors.title = 'Title must be at least 3 characters long';
+    } else if (formData.title.length > 100) {
+      errors.title = 'Title must be less than 100 characters';
+    }
+    
+    // Content validation
+    if (formData.content.trim() === '') {
+      errors.content = 'Content is required';
+    } else if (formData.content.length < 20) {
+      errors.content = 'Content must be at least 20 characters long';
+    }
+    
+    // Preference validation
+    if (formData.preference.length === 0) {
+      errors.preference = 'Please select at least one preference category';
+    }
+    
+    // Image validation
+    if (touched.image) {
+      if (imageRequired && !imageFile) {
+        errors.image = 'Featured image is required';
+      } else if (imageFile) {
+        // Optional file size validation when image is provided
+        if (imageFile.size > 5 * 1024 * 1024) {
+          errors.image = 'Image size must be less than 5MB';
+        }
+      }
+    }
+    
+    setValidationErrors(errors);
+    return errors;
+  };
+
+  const markFieldAsTouched = (fieldName: string): void => {
+    setTouched({
+      ...touched,
+      [fieldName]: true
+    });
+  };
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value,
     });
+    markFieldAsTouched(name);
   };
 
   const handlePreferenceChange = (preference: string): void => {
@@ -104,6 +168,9 @@ export default function NewBlog(): ReactElement {
         preference: [...formData.preference, preference],
       });
     }
+    
+    // Mark preference field as touched
+    markFieldAsTouched('preference');
   };
 
   const handlePublishChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -118,9 +185,29 @@ export default function NewBlog(): ReactElement {
     if (file) {
       processImageFile(file);
     }
+    // Mark image as touched even if no file was selected
+    markFieldAsTouched('image');
   };
 
   const processImageFile = (file: File): void => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setValidationErrors({
+        ...validationErrors,
+        image: 'Selected file must be an image'
+      });
+      return;
+    }
+    
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setValidationErrors({
+        ...validationErrors,
+        image: 'Image size must be less than 5MB'
+      });
+      return;
+    }
+    
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -128,6 +215,14 @@ export default function NewBlog(): ReactElement {
       setPreviewImage(result);
     };
     reader.readAsDataURL(file);
+    
+    // Clear previous image errors if any
+    if (validationErrors.image) {
+      setValidationErrors({
+        ...validationErrors,
+        image: undefined
+      });
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
@@ -143,9 +238,17 @@ export default function NewBlog(): ReactElement {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     setIsDragging(false);
+    markFieldAsTouched('image');
     
     const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type.startsWith('image/')) {
+    if (files.length > 0) {
+      if (!files[0].type.startsWith('image/')) {
+        setValidationErrors({
+          ...validationErrors,
+          image: 'Selected file must be an image'
+        });
+        return;
+      }
       processImageFile(files[0]);
     }
   };
@@ -156,6 +259,7 @@ export default function NewBlog(): ReactElement {
         ...formData,
         tags: [...formData.tags, newTag.trim()],
       });
+      markFieldAsTouched('tags');
       setNewTag('');
     }
   };
@@ -207,14 +311,33 @@ export default function NewBlog(): ReactElement {
     setImageFile(null);
     setSubmitSuccess(false);
     setErrorMessage(null);
+    setValidationErrors({});
+    setTouched({});
+    setImageRequired(false);
   };
 
   const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     
-    // Validation
-    if (formData.preference.length === 0) {
-      setErrorMessage("Please select at least one preference category");
+    // Mark all fields as touched for validation display
+    const allFields = ['title', 'content', 'image', 'tags', 'preference'];
+    const allTouched = allFields.reduce((acc, field) => ({
+      ...acc,
+      [field]: true
+    }), {});
+    setTouched(allTouched);
+    
+    // Validate all fields
+    const errors = validateForm();
+    
+    // Check if there are any validation errors
+    if (Object.keys(errors).length > 0) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     
@@ -237,6 +360,7 @@ export default function NewBlog(): ReactElement {
         }
       } else {
         console.log("No image file selected");
+        toast.error("No image file selected")
       }
       
       // Prepare final form data with cloudinary image URL
@@ -252,15 +376,48 @@ export default function NewBlog(): ReactElement {
       console.log('Blog post created:', response);
       
       setSubmitSuccess(true);
-      alert('Blog post created successfully!');
+      message.success('Blog post created successfully!')
       resetForm();
-    } catch (error) {
-      console.error('Error creating blog post:', error);
-      setErrorMessage("Failed to create blog post. Please check your inputs and try again.");
-      alert('Failed to create blog post. Please try again.');
+    } catch (err) {
+      const error = err as AxiosError<{ errors: { msg: string }[] }>;
+      console.log("err",error);
+      
+      if (error.response?.data?.errors && error.response.data.errors.length > 0) {
+        const message = error.response.data.errors[0].msg;
+        console.log("message==>",message);
+        
+        setErrorMessage(message);
+        toast.error(message);
+      } else {
+        setErrorMessage("Failed to create blog post. Please try again.");
+        toast.error("Failed to create blog post. Please try again.");
+      }
+    
+      console.error("Error creating blog post:", error);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Helper function to determine if field has an error and should show it
+  const showError = (fieldName: string): boolean => {
+    return touched[fieldName] && !!validationErrors[fieldName as keyof ValidationErrors];
+  };
+
+  // Helper function to get input class based on validation state
+  const getInputClass = (fieldName: string): string => {
+    const baseClass = "w-full px-4 py-2 border rounded-md transition-all duration-200";
+    if (showError(fieldName)) {
+      return `${baseClass} border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500`;
+    }
+    return `${baseClass} border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`;
+  };
+
+  // Toggle image requirement
+  const toggleImageRequired = (): void => {
+    setImageRequired(!imageRequired);
+    // Revalidate the form after toggling
+    markFieldAsTouched('image');
   };
 
   return (
@@ -274,9 +431,7 @@ export default function NewBlog(): ReactElement {
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
+              <AlertCircle className="h-5 w-5 text-red-400" />
             </div>
             <div className="ml-3">
               <p className="text-sm text-red-700">{errorMessage}</p>
@@ -305,6 +460,9 @@ export default function NewBlog(): ReactElement {
             <label htmlFor="title" className="flex items-center text-sm font-medium text-gray-700 mb-2">
               <FileText className="mr-2" size={18} />
               Title
+              {validationErrors.title && touched.title && (
+                <span className="ml-2 text-red-500 text-xs">*</span>
+              )}
             </label>
             <input
               type="text"
@@ -312,24 +470,55 @@ export default function NewBlog(): ReactElement {
               name="title"
               value={formData.title}
               onChange={handleInputChange}
+              onBlur={() => markFieldAsTouched('title')}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              className={getInputClass('title')}
               placeholder="Enter your blog post title"
             />
+            {showError('title') && (
+              <p className="mt-1 text-sm text-red-500 flex items-center">
+                <AlertCircle className="mr-1" size={14} />
+                {validationErrors.title}
+              </p>
+            )}
           </div>
           
           {/* Image Upload */}
           <div className="transition-all duration-300 hover:shadow-md p-4 rounded-lg border border-gray-200">
-            <label htmlFor="image" className="flex items-center text-sm font-medium text-gray-700 mb-2">
-              <ImageIcon className="mr-2" size={18} />
-              Featured Image
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="image" className="flex items-center text-sm font-medium text-gray-700">
+                <ImageIcon className="mr-2" size={18} />
+                Featured Image
+                {imageRequired && (
+                  <span className="ml-1 text-red-500">*</span>
+                )}
+                {validationErrors.image && touched.image && (
+                  <span className="ml-2 text-red-500 text-xs">*</span>
+                )}
+              </label>
+              
+              {/* Toggle for making image required */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="imageRequired"
+                  checked={imageRequired}
+                  onChange={toggleImageRequired}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-all duration-200"
+                />
+                <label htmlFor="imageRequired" className="ml-2 text-xs text-gray-600">
+                  Required field
+                </label>
+              </div>
+            </div>
             
             <div 
               className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-300 ${
                 isDragging 
                   ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                  : showError('image')
+                    ? 'border-red-300 hover:border-red-400'
+                    : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
               }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -346,9 +535,9 @@ export default function NewBlog(): ReactElement {
               
               {!previewImage ? (
                 <div className="flex flex-col items-center">
-                  <Upload className="text-gray-400 mb-2" size={32} />
-                  <p className="text-sm text-gray-500">
-                    Drag and drop an image here, or click to select
+                  <Upload className={`mb-2 ${showError('image') ? 'text-red-400' : 'text-gray-400'}`} size={32} />
+                  <p className={`text-sm ${showError('image') ? 'text-red-500' : 'text-gray-500'}`}>
+                    {imageRequired ? 'Required: Drag and drop an image here, or click to select' : 'Drag and drop an image here, or click to select'}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     Supports JPG, PNG, GIF up to 5MB
@@ -371,6 +560,10 @@ export default function NewBlog(): ReactElement {
                         ...formData,
                         image: ''
                       });
+                      // If image is required, this will show validation error
+                      if (imageRequired) {
+                        validateForm();
+                      }
                     }}
                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   >
@@ -382,6 +575,12 @@ export default function NewBlog(): ReactElement {
                 </div>
               )}
             </div>
+            {showError('image') && (
+              <p className="mt-1 text-sm text-red-500 flex items-center">
+                <AlertCircle className="mr-1" size={14} />
+                {validationErrors.image}
+              </p>
+            )}
           </div>
           
           {/* Content */}
@@ -389,6 +588,9 @@ export default function NewBlog(): ReactElement {
             <label htmlFor="content" className="flex items-center text-sm font-medium text-gray-700 mb-2">
               <FileText className="mr-2" size={18} />
               Content
+              {validationErrors.content && touched.content && (
+                <span className="ml-2 text-red-500 text-xs">*</span>
+              )}
             </label>
             <textarea
               id="content"
@@ -396,10 +598,22 @@ export default function NewBlog(): ReactElement {
               rows={8}
               value={formData.content}
               onChange={handleInputChange}
+              onBlur={() => markFieldAsTouched('content')}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              className={getInputClass('content')}
               placeholder="Write your blog post content here..."
             />
+            {showError('content') && (
+              <p className="mt-1 text-sm text-red-500 flex items-center">
+                <AlertCircle className="mr-1" size={14} />
+                {validationErrors.content}
+              </p>
+            )}
+            <div className="flex justify-end mt-1">
+              <span className={`text-xs ${formData.content.length < 20 ? 'text-red-500' : 'text-gray-500'}`}>
+                {formData.content.length} / 20 minimum characters
+              </span>
+            </div>
           </div>
           
           {/* Multiple Preference Category Selection */}
@@ -407,6 +621,10 @@ export default function NewBlog(): ReactElement {
             <h3 className="flex items-center text-lg font-medium text-gray-800 mb-4">
               <Tag className="mr-2" size={18} />
               Preference Categories
+              <span className="ml-1 text-red-500">*</span>
+              {validationErrors.preference && touched.preference && (
+                <span className="ml-2 text-red-500 text-xs">*</span>
+              )}
             </h3>
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -428,8 +646,11 @@ export default function NewBlog(): ReactElement {
             <p className="text-sm text-gray-500 mt-2">
               Selected: {formData.preference.length > 0 ? formData.preference.join(', ') : 'None'}
             </p>
-            {formData.preference.length === 0 && (
-              <p className="text-sm text-red-500 mt-1">* Please select at least one preference category</p>
+            {showError('preference') && (
+              <p className="mt-1 text-sm text-red-500 flex items-center">
+                <AlertCircle className="mr-1" size={14} />
+                {validationErrors.preference}
+              </p>
             )}
           </div>
           
@@ -469,6 +690,7 @@ export default function NewBlog(): ReactElement {
                 type="button"
                 onClick={addNewTag}
                 className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center"
+                disabled={!newTag.trim()}
               >
                 <Plus size={16} className="mr-1" /> Add Tag
               </button>
@@ -496,6 +718,39 @@ export default function NewBlog(): ReactElement {
               )}
             </div>
           </div>
+          
+          {/* Form Validation Summary */}
+          {Object.keys(validationErrors).length > 0 && Object.keys(touched).length > 0 && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+                  <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
+                    {Object.entries(validationErrors).map(([field, error]) => (
+                      <li key={field}>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const element = document.getElementById(field);
+                            if (element) {
+                              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              element.focus();
+                            }
+                          }}
+                          className="underline hover:text-red-800 focus:outline-none"
+                        >
+                          {error}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Submit Button */}
           <div className="pt-4">

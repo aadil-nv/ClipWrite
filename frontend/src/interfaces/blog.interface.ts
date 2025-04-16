@@ -40,6 +40,9 @@ export interface BlogTag {
     dislikeCount: number;
     createdAt: string;
     updatedAt: string;
+    likedBy?: string[];
+    dislikedBy?: string[];
+ 
   }
   
   export interface BlogsProps {

@@ -291,4 +291,21 @@ export const addDislike = async (req: AuthRequest, res: Response, next: NextFunc
 };
 
 
+export const getLatestBlog = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const latestBlog = await Blog.findOne({ isPublished: true })
+      .sort({ createdAt: -1 }) // sort by newest
+      .populate("author");
 
+    if (!latestBlog) {
+      return res.status(404).json({ message: "No published blogs found" });
+    }
+
+    res.status(200).json({
+      message: "Latest blog fetched",
+      blog: latestBlog,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

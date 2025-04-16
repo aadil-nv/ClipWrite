@@ -128,6 +128,7 @@ export const saleValidation = [
 ];
 
 export const createBlogValidation = [
+  
   body("title")
     .trim()
     .notEmpty()
@@ -169,7 +170,9 @@ export const createBlogValidation = [
     ])
     .withMessage("Invalid preference value"),
 
-  body("image")
+    body("image")
+    .notEmpty()
+    .withMessage("Image is required")
     .isString()
     .withMessage("Image must be a valid string URL"),
 

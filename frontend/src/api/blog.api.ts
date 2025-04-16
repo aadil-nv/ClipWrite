@@ -43,6 +43,10 @@ export const fetchAllBlogs = async () => {
   const response = await userInstance.get<ApiResponse>('api/blog/all-blogs');
   return response.data.blogs;
 };
+export const getLatestBlog = async () => {
+  const response = await userInstance.get<ApiResponse>('api/blog/latest');
+  return response.data.blogs;
+};
 export const createNewBlog = async (blogData: BlogFormData): Promise<CreateBlogResponse> => {  
   try {
     const response = await userInstance.post<CreateBlogResponse>('api/blog/new-blog',blogData);
@@ -72,4 +76,13 @@ export const updateBlog = async (blogId: string, blogData:BlogFormData ) => {
     console.error('Error updating blog:', error);
     throw error;
   }
+};
+
+export const getBlogByIdForDetails = async (id: string) => {
+  const response = await userInstance.get(`api/blog/blogs/${id}`);
+  return response.data.blog;
+};
+
+export const likeBlog = async (blogId: string) => {
+  return await userInstance.patch(`api/blog/like/${blogId}`);
 };
